@@ -5,7 +5,7 @@ import { User } from '../types';
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string) => void;
   logout: () => void;
 }
 
@@ -32,10 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  function login(newToken: string, newUser: User) {
+  // 토큰만 저장하면 위의 useEffect가 /auth/me로 사용자 정보를 불러온다.
+  // 그동안 RequireAuth가 로그인 화면으로 튕기지 않도록 loading을 켜둔다.
+  function login(newToken: string) {
     localStorage.setItem('token', newToken);
+    setLoading(true);
     setToken(newToken);
-    setUser(newUser);
   }
 
   function logout() {

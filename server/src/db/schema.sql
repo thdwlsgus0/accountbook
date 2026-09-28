@@ -1,10 +1,12 @@
 -- 공용가계부 (커플용) 스키마
 -- 실행: mysql -u root -p accountbook < server/src/db/schema.sql
 
+-- 네이버 OAuth 로그인 전용. 비밀번호는 저장하지 않는다.
+-- naver_id는 네이버가 사용자별로 내려주는 고유 식별자이고, email은 사용자가 제공에 동의하지 않으면 없을 수 있다.
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
+  naver_id VARCHAR(64) NOT NULL UNIQUE,
+  email VARCHAR(255) NULL,
   name VARCHAR(100) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

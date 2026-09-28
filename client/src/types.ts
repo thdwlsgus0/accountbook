@@ -3,7 +3,8 @@
 
 export interface User {
   id: number;
-  email: string;
+  // 네이버에서 이메일 제공에 동의하지 않으면 null
+  email: string | null;
   name: string;
 }
 
@@ -19,7 +20,7 @@ export interface Household {
 export interface HouseholdMember {
   id: number;
   name: string;
-  email: string;
+  email: string | null;
   role: 'owner' | 'member';
 }
 

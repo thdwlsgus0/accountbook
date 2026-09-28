@@ -1,6 +1,7 @@
 import 'express-async-errors';
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { pool } from './config/db.js';
 import authRouter from './routes/auth.js';
@@ -15,8 +16,12 @@ import goalsRouter from './routes/goals.js';
 dotenv.config();
 
 const app = express();
+// 배포 환경에서는 nginx가 앞단에서 리버스 프록시를 하므로, X-Forwarded-* 헤더를 신뢰해
+// req.ip 등이 nginx의 주소가 아니라 실제 접속자 IP를 가리키게 한다.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/api/health', async (req: Request, res: Response) => {
   try {

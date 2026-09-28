@@ -49,17 +49,17 @@ select {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
-}
 
-.navbar-links a {
-  color: var(--color-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
+  a {
+    color: var(--color-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
 
-.navbar-links a.active {
-  color: var(--color-primary);
-  font-weight: 600;
+    &.active {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+  }
 }
 
 .navbar-user {
@@ -67,13 +67,13 @@ select {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
-}
 
-.navbar-user button {
-  border: 1px solid var(--color-border);
-  background: transparent;
-  border-radius: 6px;
-  padding: 0.3rem 0.6rem;
+  button {
+    border: 1px solid var(--color-border);
+    background: transparent;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+  }
 }
 
 main {
@@ -101,57 +101,68 @@ main {
   align-items: center;
   min-height: 100vh;
   padding: 1rem;
+
+  .card {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+
+  input {
+    padding: 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+
+  button[type='submit'] {
+    padding: 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 600;
+  }
 }
 
-.auth-page .card {
-  width: 100%;
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.auth-page label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--color-muted);
-}
-
-.auth-page input {
-  padding: 0.6rem;
-  border: 1px solid var(--color-border);
+.naver-login-button {
+  display: block;
+  padding: 0.8rem;
   border-radius: 8px;
-}
-
-.auth-page button[type='submit'] {
-  padding: 0.7rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--color-primary);
+  background: #03c75a;
   color: white;
-  font-weight: 600;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
 }
 
 .tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-}
 
-.tabs button {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  border-radius: 8px;
-}
+  button {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    border-radius: 8px;
 
-.tabs button.active {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
+    &.active {
+      background: var(--color-primary);
+      color: white;
+      border-color: var(--color-primary);
+    }
+  }
 }
 
 .error {
@@ -182,6 +193,14 @@ main {
 
 .summary-card {
   text-align: center;
+
+  &.income .summary-amount {
+    color: var(--color-income);
+  }
+
+  &.expense .summary-amount {
+    color: var(--color-expense);
+  }
 }
 
 .summary-amount {
@@ -190,64 +209,56 @@ main {
   margin: 0.25rem 0 0;
 }
 
-.summary-card.income .summary-amount {
-  color: var(--color-income);
-}
-
-.summary-card.expense .summary-amount {
-  color: var(--color-expense);
-}
-
 .quick-add {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-}
 
-.quick-add input,
-.quick-add select {
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
+  input,
+  select {
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
 
-.quick-add input[type='number'] {
-  flex: 1;
-  min-width: 100px;
+  input[type='number'] {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  button[type='submit'] {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 600;
+  }
 }
 
 .type-toggle {
   display: flex;
   gap: 0.25rem;
-}
 
-.type-toggle button {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: transparent;
-}
+  button {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: transparent;
 
-.type-toggle button.active.expense {
-  background: var(--color-expense);
-  color: white;
-  border-color: var(--color-expense);
-}
+    &.active.expense {
+      background: var(--color-expense);
+      color: white;
+      border-color: var(--color-expense);
+    }
 
-.type-toggle button.active.income {
-  background: var(--color-income);
-  color: white;
-  border-color: var(--color-income);
-}
-
-.quick-add button[type='submit'] {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: white;
-  font-weight: 600;
+    &.active.income {
+      background: var(--color-income);
+      color: white;
+      border-color: var(--color-income);
+    }
+  }
 }
 
 .transaction-list {
@@ -291,26 +302,26 @@ main {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  button {
+    border: 1px solid var(--color-border);
+    background: transparent;
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
 }
 
 .amount {
   font-weight: 700;
-}
 
-.amount.income {
-  color: var(--color-income);
-}
+  &.income {
+    color: var(--color-income);
+  }
 
-.amount.expense {
-  color: var(--color-expense);
-}
-
-.transaction-actions button {
-  border: 1px solid var(--color-border);
-  background: transparent;
-  border-radius: 6px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
+  &.expense {
+    color: var(--color-expense);
+  }
 }
 
 .edit-row {
@@ -318,13 +329,13 @@ main {
   flex-wrap: wrap;
   gap: 0.4rem;
   width: 100%;
-}
 
-.edit-row input,
-.edit-row select {
-  padding: 0.4rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  input,
+  select {
+    padding: 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
 }
 
 .budget-bar {
@@ -336,11 +347,11 @@ main {
   justify-content: space-between;
   font-size: 0.85rem;
   margin-bottom: 0.25rem;
-}
 
-.budget-bar-header .over {
-  color: var(--color-expense);
-  font-weight: 700;
+  .over {
+    color: var(--color-expense);
+    font-weight: 700;
+  }
 }
 
 .progress-track {
@@ -354,10 +365,10 @@ main {
   height: 100%;
   background: var(--color-primary);
   transition: width 0.2s ease;
-}
 
-.progress-fill.over {
-  background: var(--color-expense);
+  &.over {
+    background: var(--color-expense);
+  }
 }
 
 .warning {
@@ -372,21 +383,23 @@ main {
   gap: 0.75rem;
 }
 
-.goal-card h3 {
-  margin-top: 0;
+.goal-card {
+  h3 {
+    margin-top: 0;
+  }
 }
 
 .inline-form {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.5rem;
-}
 
-.inline-form input {
-  flex: 1;
-  padding: 0.4rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  input {
+    flex: 1;
+    padding: 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
 }
 
 .budget-edit-row {
@@ -395,17 +408,17 @@ main {
   gap: 0.5rem;
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--color-border);
-}
 
-.budget-edit-row span:first-child {
-  flex: 1;
-}
+  span:first-child {
+    flex: 1;
+  }
 
-.budget-edit-row input {
-  width: 120px;
-  padding: 0.4rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  input {
+    width: 120px;
+    padding: 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
 }
 
 .invite-code {

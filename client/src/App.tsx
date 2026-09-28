@@ -5,7 +5,7 @@ import { HouseholdProvider } from './context/HouseholdContext';
 import { RequireAuth, RequireHousehold } from './components/ProtectedRoute';
 import NavBar from './components/NavBar';
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import HouseholdSetupPage from './pages/HouseholdSetupPage';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
@@ -30,7 +30,7 @@ export default function App() {
         <HouseholdProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
             <Route element={<RequireAuth />}>
               <Route

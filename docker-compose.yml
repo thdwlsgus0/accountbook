@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 최초 실행(빈 볼륨)일 때만 스키마를 자동 적용한다.
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-p${DB_ROOT_PASSWORD}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      # 컨테이너 안에서는 mysql을 호스트명으로 접근한다 (docker compose 내부 네트워크).
+      DB_HOST: mysql
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    build: ./client
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - server
+
+volumes:
+  mysql_data:
