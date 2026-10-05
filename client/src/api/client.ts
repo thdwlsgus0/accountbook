@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-export const api = axios.create({ baseURL: '/api' });
+// 로컬 개발(Vite 프록시)이나 프론트+백엔드가 같은 출처로 배포된 환경에서는 '/api'면 충분하다.
+// 프론트(Vercel)와 백엔드(별도 서버)가 서로 다른 도메인에 떨어져 있을 때는
+// 빌드 시 VITE_API_BASE_URL(예: https://api.example.com/api)을 넣어준다.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+export const api = axios.create({ baseURL: API_BASE_URL });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

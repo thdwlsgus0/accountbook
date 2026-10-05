@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
+import { API_BASE_URL } from '../api/client';
 
 // 서버(/api/auth/naver/callback)가 로그인 실패 시 /login?error=<코드>로 돌려보낸다.
 const ERROR_MESSAGES: Record<string, string> = {
@@ -20,7 +21,7 @@ export default function LoginPage() {
         <p className="muted">네이버 계정으로 간편하게 시작하세요.</p>
         {errorMessage && <p className="error">{errorMessage}</p>}
         {/* fetch가 아니라 페이지 이동이어야 네이버 로그인 화면으로 넘어갈 수 있다. */}
-        <a className="naver-login-button" href="/api/auth/naver">
+        <a className="naver-login-button" href={`${API_BASE_URL}/auth/naver`}>
           네이버로 로그인
         </a>
       </div>
