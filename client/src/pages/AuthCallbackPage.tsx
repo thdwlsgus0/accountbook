@@ -11,9 +11,12 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     if (!token) return;
-    login(token);
-    // 주소창에 토큰이 남지 않도록 fragment를 지우고 이동한다.
-    navigate('/', { replace: true });
+    // login이 사용자 정보까지 다 불러온 뒤에 이동해야, 홈 화면이 "아직 로그인 안 됨"으로
+    // 잘못 판단해 로그인 화면으로 되돌아가는 일이 없다.
+    login(token).then(() => {
+      // 주소창에 토큰이 남지 않도록 fragment를 지우고 이동한다.
+      navigate('/', { replace: true });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
