@@ -647,6 +647,159 @@ form.card {
   margin: 0.4rem 0;
 }
 
+.top3-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.top3-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-accent);
+}
+
+.top3-rank {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--color-card);
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+
+  &.rank-1 {
+    background: #ffd43b;
+    color: #7a5b00;
+  }
+
+  &.rank-2 {
+    background: #dee2e6;
+    color: #495057;
+  }
+
+  &.rank-3 {
+    background: #ffc9a3;
+    color: #8a4b1f;
+  }
+}
+
+.top3-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.compare-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.compare-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.compare-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.compare-amounts {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.diff {
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.diff-up {
+  color: var(--color-expense);
+  background: var(--color-expense-soft);
+}
+
+.diff-down {
+  color: var(--color-income);
+  background: var(--color-income-soft);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: var(--color-bg-accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 0;
+
+  &.empty {
+    background: transparent;
+  }
+}
+
+.calendar-day {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.calendar-amount {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-expense);
+  white-space: nowrap;
+}
+
 .center-message {
   display: flex;
   justify-content: center;

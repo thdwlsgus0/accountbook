@@ -9,6 +9,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import HouseholdSetupPage from './pages/HouseholdSetupPage';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
+import InsightsPage from './pages/InsightsPage';
 import RecurringPage from './pages/RecurringPage';
 import BudgetsPage from './pages/BudgetsPage';
 import GoalsPage from './pages/GoalsPage';
@@ -56,6 +57,14 @@ export default function App() {
                   element={
                     <Layout>
                       <TransactionsPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/insights"
+                  element={
+                    <Layout>
+                      <InsightsPage />
                     </Layout>
                   }
                 />

@@ -22,6 +22,7 @@ export default function NavBar() {
           홈
         </NavLink>
         <NavLink to="/transactions">전체 내역</NavLink>
+        <NavLink to="/insights">통계</NavLink>
         <NavLink to="/recurring">고정비</NavLink>
         <NavLink to="/budgets">예산</NavLink>
         <NavLink to="/goals">목표</NavLink>

@@ -98,3 +98,24 @@ export interface ApiError {
     message: string;
   };
 }
+
+export interface CategoryComparison {
+  categoryId: number;
+  categoryName: string;
+  categoryColor: string;
+  current: number;
+  previous: number;
+}
+
+export interface DailyTotal {
+  date: string;
+  income: number;
+  expense: number;
+}
+
+export interface MonthInsights {
+  month: string;
+  previousMonth: string;
+  categories: CategoryComparison[];
+  daily: DailyTotal[];
+}
