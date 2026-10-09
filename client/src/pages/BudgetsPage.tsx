@@ -54,7 +54,9 @@ export default function BudgetsPage() {
               value={amounts[c.id] ?? ''}
               onChange={(e) => setAmounts({ ...amounts, [c.id]: e.target.value })}
             />
-            <button onClick={() => handleSave(c.id)}>저장</button>
+            <button type="submit" onClick={() => handleSave(c.id)}>
+              저장
+            </button>
           </div>
         ))}
       </div>

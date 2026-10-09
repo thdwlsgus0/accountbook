@@ -28,6 +28,7 @@ export default function NavBar() {
         <NavLink to="/household">가계부 설정</NavLink>
       </div>
       <div className="navbar-user">
+        <span className="navbar-avatar">{user.name.slice(0, 1)}</span>
         <span>{user.name}</span>
         <button onClick={handleLogout}>로그아웃</button>
       </div>

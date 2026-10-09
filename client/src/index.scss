@@ -1,13 +1,33 @@
+// Pretendard: 한글 가독성이 좋은 무료 웹폰트. (jsdelivr CDN, 가변폭트 1개 파일)
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css');
+
 :root {
-  --color-bg: #f7f7fb;
+  --color-bg: #f3f4fb;
+  --color-bg-accent: #eef0ff;
   --color-card: #ffffff;
-  --color-border: #e5e7eb;
-  --color-text: #1f2933;
-  --color-muted: #6b7280;
-  --color-primary: #4a63e7;
-  --color-income: #2f9e44;
-  --color-expense: #e03131;
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  --color-border: #e8e9f3;
+  --color-text: #1b1e2b;
+  --color-muted: #868aa0;
+
+  --color-primary: #5b5ff5;
+  --color-primary-dark: #4446d6;
+  --color-primary-soft: #ecebff;
+
+  --color-income: #12b57a;
+  --color-income-soft: #e4f9ef;
+  --color-expense: #f5455c;
+  --color-expense-soft: #feecef;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 22, 50, 0.04);
+  --shadow-md: 0 6px 20px rgba(20, 22, 50, 0.06);
+  --shadow-lg: 0 16px 40px rgba(20, 22, 50, 0.1);
+
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Segoe UI', sans-serif;
 }
 
 * {
@@ -16,8 +36,34 @@
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--color-bg-accent) 0%, var(--color-bg) 320px);
   color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+::selection {
+  background: var(--color-primary-soft);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
 }
 
 button {
@@ -30,34 +76,123 @@ select {
   font: inherit;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+// 기본 버튼 모양. 여기서 정해두면 어디든 <button>만 쓰면 알아서 예쁘게 보인다.
+// "주요 동작"(폼 제출)은 바로 아래 button[type='submit']에서 색을 덮어씌운다.
+button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    background: var(--color-bg-accent);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+button[type='submit'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+
+  &:hover {
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+  }
+}
+
+input,
+select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus-visible {
+    border-color: var(--color-primary);
+  }
+}
+
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1.5rem;
-  background: var(--color-card);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .navbar-brand {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &::before {
+    content: '📒';
+    font-size: 1.1rem;
+  }
 }
 
 .navbar-links {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   a {
     color: var(--color-muted);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: var(--color-bg-accent);
+    }
 
     &.active {
       color: var(--color-primary);
-      font-weight: 600;
+      background: var(--color-primary-soft);
     }
   }
 }
@@ -65,34 +200,58 @@ select {
 .navbar-user {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
 
   button {
-    border: 1px solid var(--color-border);
-    background: transparent;
-    border-radius: 6px;
-    padding: 0.3rem 0.6rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
   }
+}
+
+.navbar-avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.25rem 1rem 3rem;
 }
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
+
+  > h2 {
+    margin: 0;
+  }
 }
 
 .card {
   background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 1rem;
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+form.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 .auth-page {
@@ -101,66 +260,80 @@ main {
   align-items: center;
   min-height: 100vh;
   padding: 1rem;
+  background: radial-gradient(circle at 50% -10%, var(--color-primary-soft) 0%, var(--color-bg) 55%);
 
   .card {
     width: 100%;
-    max-width: 360px;
+    max-width: 380px;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
+    box-shadow: var(--shadow-lg);
+    padding: 2rem 1.75rem;
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      text-align: center;
+    }
   }
 
   label {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.3rem;
     font-size: 0.85rem;
     color: var(--color-muted);
-  }
-
-  input {
-    padding: 0.6rem;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-  }
-
-  button[type='submit'] {
-    padding: 0.7rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--color-primary);
-    color: white;
     font-weight: 600;
   }
 }
 
 .naver-login-button {
   display: block;
-  padding: 0.8rem;
-  border-radius: 8px;
+  padding: 0.85rem;
+  border-radius: var(--radius-sm);
   background: #03c75a;
   color: white;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    background: #02a94c;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  background: var(--color-bg-accent);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
 
   button {
     flex: 1;
     padding: 0.5rem;
-    border: 1px solid var(--color-border);
+    border: none;
     background: transparent;
-    border-radius: 8px;
+    border-radius: 7px;
+    font-weight: 600;
+    color: var(--color-muted);
+
+    &:hover {
+      background: transparent;
+    }
 
     &.active {
-      background: var(--color-primary);
-      color: white;
-      border-color: var(--color-primary);
+      background: var(--color-card);
+      color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
     }
   }
 }
@@ -168,6 +341,7 @@ main {
 .error {
   color: var(--color-expense);
   font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .muted {
@@ -182,31 +356,66 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 1.1rem;
+
+  h2 {
+    min-width: 7.5em;
+    text-align: center;
+  }
+
+  input[type='month'] {
+    margin: 0 auto;
+  }
 }
 
 .summary-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .summary-card {
   text-align: center;
+  border-top: 3px solid var(--color-border);
 
-  &.income .summary-amount {
-    color: var(--color-income);
+  .muted {
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
-  &.expense .summary-amount {
-    color: var(--color-expense);
+  &.income {
+    border-top-color: var(--color-income);
+    background: linear-gradient(180deg, var(--color-income-soft) 0%, var(--color-card) 60%);
+
+    .summary-amount {
+      color: var(--color-income);
+    }
+  }
+
+  &.expense {
+    border-top-color: var(--color-expense);
+    background: linear-gradient(180deg, var(--color-expense-soft) 0%, var(--color-card) 60%);
+
+    .summary-amount {
+      color: var(--color-expense);
+    }
+  }
+
+  &.balance {
+    border-top-color: var(--color-primary);
+    background: linear-gradient(180deg, var(--color-primary-soft) 0%, var(--color-card) 60%);
+
+    .summary-amount {
+      color: var(--color-primary-dark);
+    }
   }
 }
 
 .summary-amount {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0.25rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0.3rem 0 0;
+  letter-spacing: -0.02em;
 }
 
 .quick-add {
@@ -215,48 +424,42 @@ main {
   gap: 0.5rem;
   align-items: center;
 
-  input,
-  select {
-    padding: 0.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-  }
-
   input[type='number'] {
     flex: 1;
     min-width: 100px;
-  }
-
-  button[type='submit'] {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--color-primary);
-    color: white;
-    font-weight: 600;
+    font-weight: 700;
   }
 }
 
 .type-toggle {
   display: flex;
   gap: 0.25rem;
+  background: var(--color-bg-accent);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
 
   button {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
+    padding: 0.5rem 0.85rem;
+    border: none;
+    border-radius: 7px;
     background: transparent;
+    font-weight: 600;
+    color: var(--color-muted);
+
+    &:hover {
+      background: transparent;
+    }
 
     &.active.expense {
       background: var(--color-expense);
       color: white;
-      border-color: var(--color-expense);
+      box-shadow: var(--shadow-sm);
     }
 
     &.active.income {
       background: var(--color-income);
       color: white;
-      border-color: var(--color-income);
+      box-shadow: var(--shadow-sm);
     }
   }
 }
@@ -267,23 +470,29 @@ main {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .transaction-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.65rem 0.6rem;
+  border-bottom: none;
+  border-radius: var(--radius-sm);
   gap: 0.5rem;
   flex-wrap: wrap;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--color-bg-accent);
+  }
 }
 
 .transaction-main {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.7rem;
 }
 
 .category-dot {
@@ -291,29 +500,28 @@ main {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .transaction-category {
   margin: 0;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .transaction-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 
   button {
-    border: 1px solid var(--color-border);
-    background: transparent;
-    border-radius: 6px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 500;
   }
 }
 
 .amount {
-  font-weight: 700;
+  font-weight: 800;
 
   &.income {
     color: var(--color-income);
@@ -332,21 +540,24 @@ main {
 
   input,
   select {
-    padding: 0.4rem;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
   }
 }
 
 .budget-bar {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.9rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .budget-bar-header {
   display: flex;
   justify-content: space-between;
   font-size: 0.85rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
 
   .over {
     color: var(--color-expense);
@@ -355,26 +566,28 @@ main {
 }
 
 .progress-track {
-  background: #eee;
+  background: var(--color-bg-accent);
   border-radius: 999px;
-  height: 8px;
+  height: 9px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--color-primary);
-  transition: width 0.2s ease;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  transition: width 0.3s ease;
 
   &.over {
-    background: var(--color-expense);
+    background: linear-gradient(90deg, var(--color-expense) 0%, #d8303f 100%);
   }
 }
 
 .warning {
   color: var(--color-expense);
   font-size: 0.8rem;
-  margin: 0.25rem 0 0;
+  font-weight: 600;
+  margin: 0.4rem 0 0;
 }
 
 .goal-grid {
@@ -384,47 +597,54 @@ main {
 }
 
 .goal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
   h3 {
-    margin-top: 0;
+    margin: 0;
   }
 }
 
 .inline-form {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 
   input {
     flex: 1;
-    padding: 0.4rem;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
   }
 }
 
 .budget-edit-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
   border-bottom: 1px solid var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
 
   span:first-child {
     flex: 1;
+    font-weight: 600;
   }
 
   input {
-    width: 120px;
-    padding: 0.4rem;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    width: 130px;
+    padding: 0.4rem 0.6rem;
   }
 }
 
 .invite-code {
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: var(--color-primary);
+  margin: 0.4rem 0;
 }
 
 .center-message {
