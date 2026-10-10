@@ -130,10 +130,39 @@ select {
   border-radius: var(--radius-sm);
   background: #fff;
   color: var(--color-text);
+  color-scheme: light;
+  line-height: 1.2;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   &:focus-visible {
     border-color: var(--color-primary);
+  }
+}
+
+// date/month input의 네이티브 달력 아이콘이 테두리에 딱 붙어 눌리는 걸 막는다.
+input[type='date'],
+input[type='month'] {
+  &::-webkit-calendar-picker-indicator {
+    margin-left: 0.3rem;
+    padding: 0.15rem;
+  }
+}
+
+// 라벨 텍스트 사이에 input이 끼는 줄(예: "매월 [ ] 일에 자동 기록")이
+// 기본 inline 흐름에서는 input 높이 때문에 위아래로 살짝 어긋나 보인다.
+// flex로 바꿔 글자와 input의 세로 중심을 맞춘다.
+.inline-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--color-muted);
+
+  input {
+    width: 4.5em;
+    padding: 0.4rem 0.5rem;
+    text-align: center;
   }
 }
 

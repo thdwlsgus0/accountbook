@@ -107,7 +107,7 @@ export default function RecurringPage() {
           value={form.memo}
           onChange={(e) => setForm({ ...form, memo: e.target.value })}
         />
-        <label>
+        <label className="inline-field">
           매월
           <input
             type="number"
@@ -115,7 +115,6 @@ export default function RecurringPage() {
             max="28"
             value={form.dayOfMonth}
             onChange={(e) => setForm({ ...form, dayOfMonth: e.target.value })}
-            style={{ width: '4em' }}
           />
           일에 자동 기록
         </label>
