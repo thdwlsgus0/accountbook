@@ -62,6 +62,55 @@ router.get('/', async (req: Request, res: Response) => {
   res.json({ transactions: rows });
 });
 
+// 엑셀에서 바로 열어볼 수 있는 CSV로 내보낸다. month를 주면 그 달만, 안 주면 전체 내역(백업용).
+// 쉼표/줄바꿈/겹따옴표가 메모에 들어있어도 깨지지 않도록 직접 CSV 이스케이프를 한다.
+function csvCell(value: string | number): string {
+  const text = String(value);
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+router.get('/export', async (req: Request, res: Response) => {
+  await syncRecurringTransactions(req.householdId);
+  const month = req.query.month as string | undefined;
+
+  const [rows] = await pool.query<TransactionRow[]>(
+    `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
+            t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
+            t.user_id AS userId, u.name AS userName
+     FROM transactions t
+     LEFT JOIN categories c ON c.id = t.category_id
+     JOIN users u ON u.id = t.user_id
+     WHERE t.household_id = ?
+       ${month ? "AND DATE_FORMAT(t.occurred_on, '%Y-%m') = ?" : ''}
+     ORDER BY t.occurred_on ASC, t.id ASC`,
+    month ? [req.householdId, month] : [req.householdId]
+  );
+
+  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자'].map(csvCell).join(',');
+  const lines = rows.map((r) =>
+    [
+      r.occurredOn,
+      r.type === 'income' ? '수입' : '지출',
+      r.categoryName || '미분류',
+      r.amount,
+      r.memo || '',
+      r.userName,
+    ]
+      .map(csvCell)
+      .join(',')
+  );
+  // 윈도우 엑셀과의 호환을 위해 CRLF를 쓰고, 한글이 깨지지 않도록 UTF-8 BOM을 앞에 붙인다.
+  const csv = '﻿' + [header, ...lines].join('\r\n');
+
+  const filename = month ? `transactions_${month}.csv` : 'transactions_all.csv';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
+});
+
 router.post('/', async (req: Request<{}, {}, TransactionBody>, res: Response) => {
   if (!isValidTransactionBody(req.body)) {
     return res.status(400).json({ error: { message: '종류, 금액(0보다 큼), 날짜를 확인해주세요.' } });

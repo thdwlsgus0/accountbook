@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import { Category, Transaction, TransactionType } from '../types';
 import { formatCurrency } from '../utils/format';
+import { triggerDownload } from '../utils/download';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -67,10 +68,29 @@ export default function TransactionsPage() {
     load();
   }
 
+  // 백업·세금정산용 CSV 내보내기. scope가 'month'면 지금 보고 있는 달만, 'all'이면 전체 내역.
+  async function handleExport(scope: 'month' | 'all') {
+    if (!currentId) return;
+    const res = await api.get<Blob>(`/households/${currentId}/transactions/export`, {
+      params: scope === 'month' ? { month } : {},
+      responseType: 'blob',
+    });
+    triggerDownload(res, scope === 'month' ? `transactions_${month}.csv` : 'transactions_all.csv');
+  }
+
   return (
     <div className="page">
       <div className="month-nav">
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+      </div>
+
+      <div className="export-actions">
+        <button type="button" onClick={() => handleExport('month')}>
+          이번 달 CSV 내보내기
+        </button>
+        <button type="button" onClick={() => handleExport('all')}>
+          전체 내역 백업(CSV)
+        </button>
       </div>
 
       <ul className="transaction-list">

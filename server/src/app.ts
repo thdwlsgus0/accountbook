@@ -19,7 +19,10 @@ const app = express();
 // 배포 환경에서는 nginx/Vercel이 앞단에서 리버스 프록시를 하므로, X-Forwarded-* 헤더를 신뢰해
 // req.ip 등이 프록시의 주소가 아니라 실제 접속자 IP를 가리키게 한다.
 app.set('trust proxy', 1);
-app.use(cors());
+// CSV 내보내기 응답의 파일명을 프론트에서 읽을 수 있도록 Content-Disposition을 노출한다.
+// (노출시키지 않으면 브라우저가 CORS 세이프리스트에 없는 헤더라서 읽지 못하고, 코드에서는
+//  그냥 fallback 파일명을 쓰게 되어 동작은 하지만 서버가 정한 파일명이 무시된다)
+app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json());
 app.use(cookieParser());
 
