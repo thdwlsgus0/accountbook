@@ -755,25 +755,39 @@ form.card {
   background: var(--color-income-soft);
 }
 
+.spending-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--color-muted);
-  font-weight: 600;
-  margin-bottom: 0.4rem;
+  font-weight: 700;
+
+  .sun {
+    color: var(--color-expense);
+  }
+
+  .sat {
+    color: #3b82f6;
+  }
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
 .calendar-cell {
+  position: relative;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-accent);
   display: flex;
   flex-direction: column;
@@ -781,23 +795,78 @@ form.card {
   justify-content: center;
   gap: 0.15rem;
   min-width: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 
   &.empty {
     background: transparent;
+  }
+
+  &.has-expense:hover {
+    transform: scale(1.08);
+    box-shadow: var(--shadow-sm);
+    z-index: 1;
+  }
+
+  &.today {
+    box-shadow: inset 0 0 0 2px var(--color-primary);
   }
 }
 
 .calendar-day {
   font-size: 0.75rem;
   color: var(--color-muted);
-  font-weight: 600;
+  font-weight: 700;
+
+  &.sun {
+    color: var(--color-expense);
+  }
+
+  &.sat {
+    color: #3b82f6;
+  }
 }
 
 .calendar-amount {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.66rem;
+  font-weight: 800;
   color: var(--color-expense);
   white-space: nowrap;
+}
+
+.calendar-income-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-income);
+
+  .calendar-legend & {
+    position: static;
+  }
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.calendar-legend-bar {
+  width: 70px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(245, 69, 92, 0.1) 0%, rgba(245, 69, 92, 0.6) 100%);
+}
+
+.calendar-legend-sep {
+  width: 1px;
+  height: 0.9rem;
+  background: var(--color-border);
+  margin: 0 0.1rem;
 }
 
 .center-message {
