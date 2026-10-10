@@ -69,24 +69,32 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
           수입
         </button>
       </div>
-      <input
-        type="number"
-        inputMode="numeric"
-        placeholder="금액"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        autoFocus
-      />
-      <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-        <option value="">카테고리 선택</option>
-        {filteredCategories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <input type="text" placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} />
-      <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+
+      <div className="form-row">
+        <input
+          type="number"
+          inputMode="numeric"
+          placeholder="금액"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="quick-amount"
+          autoFocus
+        />
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <option value="">카테고리 선택</option>
+          {filteredCategories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-row">
+        <input type="text" placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} />
+        <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+      </div>
+
       {error && <p className="error">{error}</p>}
       <button type="submit" disabled={submitting}>
         {submitting ? '기록 중...' : '기록하기'}

@@ -78,9 +78,11 @@ export default function GoalsPage() {
 
       <div className="goal-grid">
         {goals.map((g) => (
-          <div key={g.id}>
+          <div key={g.id} className="goal-card-wrap">
             <GoalCard goal={g} householdId={currentId} onChange={load} />
-            <button onClick={() => handleDelete(g.id)}>목표 삭제</button>
+            <button type="button" className="goal-delete" onClick={() => handleDelete(g.id)}>
+              목표 삭제
+            </button>
           </div>
         ))}
       </div>

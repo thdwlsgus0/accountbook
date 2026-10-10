@@ -11,7 +11,10 @@ export default function TransactionList({ transactions }: { transactions: Transa
       {transactions.map((t) => (
         <li key={t.id} className={`transaction-item ${t.type}`}>
           <div className="transaction-main">
-            <span className="category-dot" style={{ backgroundColor: t.categoryColor || '#ccc' }} />
+            <span
+              className="category-dot"
+              style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
+            />
             <div>
               <p className="transaction-category">
                 {t.categoryName || '미분류'}

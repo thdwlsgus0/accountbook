@@ -78,41 +78,55 @@ export default function TransactionsPage() {
           <li key={t.id} className={`transaction-item ${t.type}`}>
             {editingId === t.id && editForm ? (
               <div className="edit-row">
-                <select
-                  value={editForm.categoryId}
-                  onChange={(e) => setEditForm({ ...editForm, categoryId: e.target.value })}
-                >
-                  <option value="">미분류</option>
-                  {categories
-                    .filter((c) => c.type === editForm.type)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-                <input
-                  type="number"
-                  value={editForm.amount}
-                  onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })}
-                />
-                <input
-                  type="text"
-                  value={editForm.memo}
-                  onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
-                />
-                <input
-                  type="date"
-                  value={editForm.occurredOn}
-                  onChange={(e) => setEditForm({ ...editForm, occurredOn: e.target.value })}
-                />
-                <button onClick={() => saveEdit(t.id)}>저장</button>
-                <button onClick={() => setEditingId(null)}>취소</button>
+                <div className="form-row">
+                  <select
+                    value={editForm.categoryId}
+                    onChange={(e) => setEditForm({ ...editForm, categoryId: e.target.value })}
+                  >
+                    <option value="">미분류</option>
+                    {categories
+                      .filter((c) => c.type === editForm.type)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="메모"
+                    value={editForm.memo}
+                    onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
+                  />
+                  <input
+                    type="date"
+                    value={editForm.occurredOn}
+                    onChange={(e) => setEditForm({ ...editForm, occurredOn: e.target.value })}
+                  />
+                </div>
+                <div className="edit-row-actions">
+                  <button type="submit" onClick={() => saveEdit(t.id)}>
+                    저장
+                  </button>
+                  <button type="button" onClick={() => setEditingId(null)}>
+                    취소
+                  </button>
+                </div>
               </div>
             ) : (
               <>
                 <div className="transaction-main">
-                  <span className="category-dot" style={{ backgroundColor: t.categoryColor || '#ccc' }} />
+                  <span
+                    className="category-dot"
+                    style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
+                  />
                   <div>
                     <p className="transaction-category">
                       {t.categoryName || '미분류'}

@@ -24,10 +24,12 @@ export default function HouseholdPage() {
       </div>
       <div className="card">
         <h3>구성원</h3>
-        <ul>
+        <ul className="member-list">
           {detail.members.map((m) => (
-            <li key={m.id}>
-              {m.name} ({m.role === 'owner' ? '개설자' : '구성원'})
+            <li key={m.id} className="member-item">
+              <span className="navbar-avatar">{m.name.slice(0, 1)}</span>
+              <span className="member-name">{m.name}</span>
+              <span className={`member-role ${m.role}`}>{m.role === 'owner' ? '개설자' : '구성원'}</span>
             </li>
           ))}
         </ul>

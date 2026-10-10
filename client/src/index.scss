@@ -275,12 +275,37 @@ main {
   border-radius: var(--radius-md);
   padding: 1.1rem;
   box-shadow: var(--shadow-sm);
+
+  > h3:first-child,
+  > h2:first-child {
+    margin-top: 0;
+    margin-bottom: 0.7rem;
+  }
 }
 
 form.card {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+
+  // 세로로 쌓인 입력 폼의 마지막 "제출" 버튼은 꽉 채워서 CTA처럼 보이게 한다.
+  // (QuickAddForm처럼 가로로 필드를 배치하는 폼은 .form-row로 감싸져 있어서 영향 없음)
+  > button[type='submit'] {
+    width: 100%;
+    padding: 0.7rem;
+  }
+}
+
+// form.card 안에서 필드 여러 개를 한 줄에 나란히 두고 싶을 때 쓰는 래퍼.
+// (QuickAddForm, TransactionsPage 수정 행에서 사용)
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+
+  > * {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .auth-page {
@@ -314,6 +339,17 @@ form.card {
     font-size: 0.85rem;
     color: var(--color-muted);
     font-weight: 600;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  button[type='submit'] {
+    width: 100%;
+    padding: 0.7rem;
   }
 }
 
@@ -441,23 +477,16 @@ form.card {
 }
 
 .summary-amount {
-  font-size: 1.2rem;
+  font-size: clamp(0.95rem, 4.2vw, 1.2rem);
   font-weight: 800;
   margin: 0.3rem 0 0;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
-.quick-add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-
-  input[type='number'] {
-    flex: 1;
-    min-width: 100px;
-    font-weight: 700;
-  }
+.quick-amount {
+  font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .type-toggle {
@@ -563,7 +592,7 @@ form.card {
 
 .edit-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.4rem;
   width: 100%;
 
@@ -571,6 +600,20 @@ form.card {
   select {
     padding: 0.4rem 0.6rem;
   }
+
+  .form-row {
+    gap: 0.4rem;
+
+    > * {
+      min-width: 90px;
+    }
+  }
+}
+
+.edit-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
 }
 
 .budget-bar {
@@ -635,6 +678,26 @@ form.card {
   }
 }
 
+.goal-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.goal-delete {
+  align-self: flex-end;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.6rem;
+  color: var(--color-expense);
+  background: var(--color-expense-soft);
+  border-color: var(--color-expense-soft);
+
+  &:hover {
+    background: var(--color-expense);
+    color: #fff;
+  }
+}
+
 .inline-form {
   display: flex;
   gap: 0.5rem;
@@ -665,6 +728,46 @@ form.card {
   input {
     width: 130px;
     padding: 0.4rem 0.6rem;
+  }
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.4rem;
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--color-bg-accent);
+  }
+}
+
+.member-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.member-role {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-bg-accent);
+  color: var(--color-muted);
+
+  &.owner {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
   }
 }
 
