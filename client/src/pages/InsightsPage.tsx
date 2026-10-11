@@ -35,7 +35,13 @@ export default function InsightsPage() {
   // categories는 서버에서 이미 current 내림차순으로 내려오므로 앞 3개가 곧 Top3.
   const top3 = insights.categories.filter((c) => c.current > 0).slice(0, 3);
 
-  const { currentIncome, currentExpense, previousIncome, previousExpense } = insights.totals;
+  // Number()로 한 번 더 감싸는 이유: 서버가 DB의 SUM() 결과를 숫자로 내려주지만,
+  // 혹시라도 문자열("0")이 섞여 들어오면 뒤에서 `!== 0` 같은 엄격 비교가 틀어져
+  // 0으로 나누기(Infinity%) 버그로 이어질 수 있어서 여기서 한 번 더 숫자로 확정한다.
+  const currentIncome = Number(insights.totals.currentIncome);
+  const currentExpense = Number(insights.totals.currentExpense);
+  const previousIncome = Number(insights.totals.previousIncome);
+  const previousExpense = Number(insights.totals.previousExpense);
   // "늘어난 게 좋은 일"인지는 항목마다 다르다 — 지출은 줄어야 좋고, 수입/남은 돈은 늘어야 좋다.
   const totalsRows = [
     { label: '지출', current: currentExpense, previous: previousExpense, goodWhenUp: false },

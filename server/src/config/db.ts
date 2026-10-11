@@ -17,6 +17,11 @@ export const pool = mysql.createPool({
   // DATE/DATETIME 컬럼을 JS Date 객체 대신 문자열로 받는다.
   // (Date 객체로 받으면 서버 타임존에 따라 JSON 직렬화 시 날짜가 하루 밀리는 문제가 생길 수 있다)
   dateStrings: true,
+  // SUM()/COALESCE(SUM(...))은 DECIMAL을 돌려주는데, mysql2는 기본적으로 이걸 정밀도 손실 방지용으로
+  // 문자열("0", "30600")로 내려준다. 그 상태로 JSON 응답에 그대로 실리면 금액이 숫자가 아니라 문자열이
+  // 되어버려서, 프론트에서 `!== 0` 같은 엄격 비교를 할 때 "0" !== 0 이 true가 되어 0으로 나누기
+  // (Infinity%) 같은 버그가 생긴다. true로 두면 이 컬럼들을 바로 숫자로 받는다.
+  decimalNumbers: true,
   // TiDB Cloud 같은 매니지드 DB는 TLS 연결을 강제한다.
   ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2' } : undefined,
 });
