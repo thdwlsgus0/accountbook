@@ -35,6 +35,13 @@ interface DailyRow extends RowDataPacket {
   expense: number;
 }
 
+interface TotalsCompareRow extends RowDataPacket {
+  currentIncome: number;
+  currentExpense: number;
+  previousIncome: number;
+  previousExpense: number;
+}
+
 function currentYearMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -120,7 +127,19 @@ router.get('/insights', async (req: Request, res: Response) => {
     [req.householdId, month]
   );
 
-  res.json({ month, previousMonth, categories, daily });
+  // 이번 달 수입/지출을 지난달과 통째로 비교한다 (카테고리별이 아니라 전체 합계).
+  const [[totals]] = await pool.query<TotalsCompareRow[]>(
+    `SELECT
+       COALESCE(SUM(CASE WHEN DATE_FORMAT(occurred_on, '%Y-%m') = ? AND type = 'income' THEN amount ELSE 0 END), 0) AS currentIncome,
+       COALESCE(SUM(CASE WHEN DATE_FORMAT(occurred_on, '%Y-%m') = ? AND type = 'expense' THEN amount ELSE 0 END), 0) AS currentExpense,
+       COALESCE(SUM(CASE WHEN DATE_FORMAT(occurred_on, '%Y-%m') = ? AND type = 'income' THEN amount ELSE 0 END), 0) AS previousIncome,
+       COALESCE(SUM(CASE WHEN DATE_FORMAT(occurred_on, '%Y-%m') = ? AND type = 'expense' THEN amount ELSE 0 END), 0) AS previousExpense
+     FROM transactions
+     WHERE household_id = ? AND DATE_FORMAT(occurred_on, '%Y-%m') IN (?, ?)`,
+    [month, month, previousMonth, previousMonth, req.householdId, month, previousMonth]
+  );
+
+  res.json({ month, previousMonth, categories, daily, totals });
 });
 
 export default router;

@@ -900,6 +900,18 @@ form.card {
   background: var(--color-income-soft);
 }
 
+// diff-up/diff-down은 "증가=빨강, 감소=초록"으로 고정이라 지출 카테고리 비교에는 맞지만,
+// 수입처럼 늘어나는 게 좋은 항목에는 안 맞는다. 그래서 의미(좋음/나쁨) 기준으로 따로 둔다.
+.diff-good {
+  color: var(--color-income);
+  background: var(--color-income-soft);
+}
+
+.diff-bad {
+  color: var(--color-expense);
+  background: var(--color-expense-soft);
+}
+
 .spending-calendar {
   display: flex;
   flex-direction: column;

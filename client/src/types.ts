@@ -113,9 +113,17 @@ export interface DailyTotal {
   expense: number;
 }
 
+export interface TotalsComparison {
+  currentIncome: number;
+  currentExpense: number;
+  previousIncome: number;
+  previousExpense: number;
+}
+
 export interface MonthInsights {
   month: string;
   previousMonth: string;
   categories: CategoryComparison[];
   daily: DailyTotal[];
+  totals: TotalsComparison;
 }

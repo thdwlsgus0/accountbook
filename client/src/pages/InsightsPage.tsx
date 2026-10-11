@@ -35,12 +35,54 @@ export default function InsightsPage() {
   // categories는 서버에서 이미 current 내림차순으로 내려오므로 앞 3개가 곧 Top3.
   const top3 = insights.categories.filter((c) => c.current > 0).slice(0, 3);
 
+  const { currentIncome, currentExpense, previousIncome, previousExpense } = insights.totals;
+  // "늘어난 게 좋은 일"인지는 항목마다 다르다 — 지출은 줄어야 좋고, 수입/남은 돈은 늘어야 좋다.
+  const totalsRows = [
+    { label: '지출', current: currentExpense, previous: previousExpense, goodWhenUp: false },
+    { label: '수입', current: currentIncome, previous: previousIncome, goodWhenUp: true },
+    {
+      label: '남은 돈',
+      current: currentIncome - currentExpense,
+      previous: previousIncome - previousExpense,
+      goodWhenUp: true,
+    },
+  ];
+
   return (
     <div className="page">
       <h2>통계</h2>
       <div className="month-nav">
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>
+
+      <section className="card">
+        <h3>이번 달 vs 지난달</h3>
+        <ul className="compare-list">
+          {totalsRows.map((row) => {
+            const diff = row.current - row.previous;
+            const diffPercent = row.previous !== 0 ? Math.round((diff / Math.abs(row.previous)) * 100) : null;
+            const isGood = diff === 0 ? null : (diff > 0) === row.goodWhenUp;
+            return (
+              <li key={row.label} className="compare-item">
+                <div className="compare-main">
+                  <span>{row.label}</span>
+                </div>
+                <div className="compare-amounts">
+                  <span className="muted small">
+                    {formatCurrency(row.previous)} → {formatCurrency(row.current)}
+                  </span>
+                  {diff !== 0 && (
+                    <span className={isGood ? 'diff diff-good' : 'diff diff-bad'}>
+                      {diff > 0 ? '▲' : '▼'} {formatCurrency(Math.abs(diff))}
+                      {diffPercent != null && ` (${Math.abs(diffPercent)}%)`}
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       <section className="card">
         <h3>이번 달 Top 3 카테고리</h3>
