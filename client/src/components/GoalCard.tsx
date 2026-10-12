@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { api } from '../api/client';
 import { SavingsGoal } from '../types';
 import { formatCurrency } from '../utils/format';
+import Spinner from './Spinner';
 
 interface GoalCardProps {
   goal: SavingsGoal;
@@ -40,6 +41,7 @@ export default function GoalCard({ goal, householdId, onChange }: GoalCardProps)
       <form onSubmit={handleContribute} className="inline-form">
         <input type="number" placeholder="적립할 금액" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <button type="submit" disabled={submitting}>
+          {submitting && <Spinner size="sm" variant="on-primary" />}
           적립
         </button>
       </form>

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { Category, TransactionType } from '../types';
+import Spinner from './Spinner';
 
 interface QuickAddFormProps {
   householdId: number;
@@ -97,6 +98,7 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
 
       {error && <p className="error">{error}</p>}
       <button type="submit" disabled={submitting}>
+        {submitting && <Spinner size="sm" variant="on-primary" />}
         {submitting ? '기록 중...' : '기록하기'}
       </button>
     </form>

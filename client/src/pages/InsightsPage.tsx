@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SpendingCalendar from '../components/SpendingCalendar';
+import LoadingScreen from '../components/LoadingScreen';
 import { MonthInsights } from '../types';
 import { formatCurrency } from '../utils/format';
 
@@ -29,7 +30,7 @@ export default function InsightsPage() {
   }, [load]);
 
   if (loading || !insights) {
-    return <div className="center-message">불러오는 중...</div>;
+    return <LoadingScreen />;
   }
 
   // categories는 서버에서 이미 current 내림차순으로 내려오므로 앞 3개가 곧 Top3.

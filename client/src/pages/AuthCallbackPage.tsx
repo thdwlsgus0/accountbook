@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 // 서버가 로그인 성공 후 /auth/callback#token=<JWT> 로 돌려보낸다.
 // 토큰을 저장하고 나면 홈으로 이동한다.
@@ -21,5 +22,5 @@ export default function AuthCallbackPage() {
   }, []);
 
   if (!token) return <Navigate to="/login?error=failed" replace />;
-  return <div className="center-message">로그인 중...</div>;
+  return <LoadingScreen text="로그인 중..." />;
 }

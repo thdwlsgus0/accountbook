@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import { HouseholdDetail } from '../types';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function HouseholdPage() {
   const { currentId } = useHousehold();
@@ -12,7 +13,7 @@ export default function HouseholdPage() {
     api.get<HouseholdDetail>(`/households/${currentId}`).then((res) => setDetail(res.data));
   }, [currentId]);
 
-  if (!detail) return <div className="center-message">불러오는 중...</div>;
+  if (!detail) return <LoadingScreen />;
 
   return (
     <div className="page">

@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
+import Spinner from '../components/Spinner';
 
 export default function HouseholdSetupPage() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
@@ -68,6 +69,7 @@ export default function HouseholdSetupPage() {
               />
             </label>
             <button type="submit" disabled={submitting}>
+              {submitting && <Spinner size="sm" variant="on-primary" />}
               만들기
             </button>
           </form>
@@ -83,6 +85,7 @@ export default function HouseholdSetupPage() {
               />
             </label>
             <button type="submit" disabled={submitting}>
+              {submitting && <Spinner size="sm" variant="on-primary" />}
               참여하기
             </button>
           </form>

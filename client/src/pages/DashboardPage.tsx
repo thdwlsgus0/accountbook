@@ -6,6 +6,7 @@ import TransactionList from '../components/TransactionList';
 import BudgetBar from '../components/BudgetBar';
 import { Category, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
+import LoadingScreen from '../components/LoadingScreen';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -48,7 +49,7 @@ export default function DashboardPage() {
   }
 
   if (loading || !summary || !currentId) {
-    return <div className="center-message">불러오는 중...</div>;
+    return <LoadingScreen />;
   }
 
   const budgetCategories = summary.categories.filter((c) => c.budgetLimit != null);
