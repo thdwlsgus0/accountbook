@@ -143,13 +143,46 @@ select {
   }
 }
 
-// date/month input의 네이티브 달력 아이콘이 테두리에 딱 붙어 눌리는 걸 막는다.
+// 네이티브 달력 input은 기본 생김새가 브라우저마다 다르고 칙칙해서,
+// 우리 색(보라)과 어울리게 배경/아이콘을 다시 입힌다.
 input[type='date'],
 input[type='month'] {
-  &::-webkit-calendar-picker-indicator {
-    margin-left: 0.3rem;
-    padding: 0.15rem;
+  cursor: pointer;
+  font-weight: 600;
+  background: var(--color-bg-accent);
+  border-color: transparent;
+
+  &:hover {
+    background: var(--color-primary-soft);
   }
+
+  &:focus-visible {
+    background: #fff;
+    border-color: var(--color-primary);
+  }
+
+  // 기본 검정 달력 아이콘을 보라색으로 물들이고, 클릭 영역도 넉넉하게 준다.
+  &::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    margin-left: 0.4rem;
+    padding: 0.25rem;
+    border-radius: 6px;
+    filter: invert(28%) sepia(97%) saturate(1875%) hue-rotate(228deg) brightness(97%) contrast(101%);
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background: rgba(91, 95, 245, 0.15);
+    }
+  }
+}
+
+// 페이지 상단의 월 선택기(.month-nav)는 더 크고 눈에 띄게.
+.month-nav input[type='month'] {
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  text-align: center;
 }
 
 // 라벨 텍스트 사이에 input이 끼는 줄(예: "매월 [ ] 일에 자동 기록")이
