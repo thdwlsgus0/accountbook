@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { Household } from '../types';
 import { useAuth } from './AuthContext';
@@ -29,6 +29,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     return res.data.households;
   }, []);
 
+  const selectHousehold = useCallback((id: number) => {
+    setCurrentId(id);
+    localStorage.setItem('currentHouseholdId', String(id));
+  }, []);
+
   useEffect(() => {
     if (!user) {
       setHouseholds([]);
@@ -46,18 +51,16 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  function selectHousehold(id: number) {
-    setCurrentId(id);
-    localStorage.setItem('currentHouseholdId', String(id));
-  }
-
   const current = households.find((h) => h.id === currentId) || null;
 
-  return (
-    <HouseholdContext.Provider value={{ households, current, currentId, selectHousehold, refresh, loading }}>
-      {children}
-    </HouseholdContext.Provider>
+  // AuthContext와 같은 이유로, context 값을 useMemo로 묶어서 households/current/currentId/loading이
+  // 실제로 바뀔 때만 하위 컴포넌트가 다시 렌더링되게 한다.
+  const value = useMemo(
+    () => ({ households, current, currentId, selectHousehold, refresh, loading }),
+    [households, current, currentId, selectHousehold, refresh, loading]
   );
+
+  return <HouseholdContext.Provider value={value}>{children}</HouseholdContext.Provider>;
 }
 
 export function useHousehold(): HouseholdContextValue {

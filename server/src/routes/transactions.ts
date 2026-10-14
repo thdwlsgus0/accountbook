@@ -4,6 +4,7 @@ import { pool } from '../config/db.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { requireHouseholdMember } from '../middlewares/household.js';
 import { syncRecurringTransactions } from '../utils/recurring.js';
+import { currentYearMonth, monthRange } from '../utils/date.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -29,11 +30,6 @@ interface TransactionBody {
   occurredOn?: string;
 }
 
-function currentYearMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
 function isValidTransactionBody(body: TransactionBody): body is Required<Pick<TransactionBody, 'type' | 'amount' | 'occurredOn'>> & TransactionBody {
   return (
     !!body.type &&
@@ -48,6 +44,7 @@ router.get('/', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
 
   const month = (req.query.month as string) || currentYearMonth();
+  const [start, end] = monthRange(month);
   const [rows] = await pool.query<TransactionRow[]>(
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
@@ -55,9 +52,9 @@ router.get('/', async (req: Request, res: Response) => {
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
-     WHERE t.household_id = ? AND DATE_FORMAT(t.occurred_on, '%Y-%m') = ?
+     WHERE t.household_id = ? AND t.occurred_on >= ? AND t.occurred_on < ?
      ORDER BY t.occurred_on DESC, t.id DESC`,
-    [req.householdId, month]
+    [req.householdId, start, end]
   );
   res.json({ transactions: rows });
 });
@@ -75,6 +72,7 @@ function csvCell(value: string | number): string {
 router.get('/export', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
   const month = req.query.month as string | undefined;
+  const range = month ? monthRange(month) : null;
 
   const [rows] = await pool.query<TransactionRow[]>(
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
@@ -84,9 +82,9 @@ router.get('/export', async (req: Request, res: Response) => {
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
      WHERE t.household_id = ?
-       ${month ? "AND DATE_FORMAT(t.occurred_on, '%Y-%m') = ?" : ''}
+       ${range ? 'AND t.occurred_on >= ? AND t.occurred_on < ?' : ''}
      ORDER BY t.occurred_on ASC, t.id ASC`,
-    month ? [req.householdId, month] : [req.householdId]
+    range ? [req.householdId, range[0], range[1]] : [req.householdId]
   );
 
   const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자'].map(csvCell).join(',');

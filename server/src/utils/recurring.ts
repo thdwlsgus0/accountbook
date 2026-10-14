@@ -1,4 +1,4 @@
-import { RowDataPacket } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from '../config/db.js';
 
 interface RecurringRuleRow extends RowDataPacket {
@@ -31,15 +31,28 @@ export async function syncRecurringTransactions(householdId: number): Promise<vo
     `SELECT * FROM recurring_transactions
      WHERE household_id = ? AND is_active = TRUE
        AND start_month <= ?
-       AND (last_generated_month IS NULL OR last_generated_month < ?)`,
-    [householdId, thisMonth, thisMonth]
+       AND (last_generated_month IS NULL OR last_generated_month < ?)
+       AND day_of_month <= ?`,
+    [householdId, thisMonth, thisMonth, todayDate]
   );
 
   for (const rule of rules) {
-    if (todayDate < rule.day_of_month) continue; // 이번 달 예정일이 아직 오지 않음
+    // 대시보드 같은 화면은 /summary, /transactions 등 여러 API를 동시에 부르고,
+    // 그 각각이 이 함수를 독립적으로 호출한다. 예전엔 "조회 -> INSERT -> UPDATE" 순서라
+    // 두 요청이 거의 동시에 들어오면 둘 다 "아직 안 만들어졌다"고 보고 같은 달 거래를
+    // 두 번 만들 수 있었다 (경쟁 상태). 그래서 INSERT보다 먼저, 이 UPDATE로
+    // "이번 달 치는 내가 만든다"는 걸 원자적으로 선점한다 — last_generated_month가
+    // 그 사이 다른 요청에 의해 이미 갱신됐다면 WHERE 조건이 더 이상 맞지 않아
+    // affectedRows가 0이 되고, 그 요청은 생성을 건너뛴다.
+    const [claim] = await pool.query<ResultSetHeader>(
+      `UPDATE recurring_transactions
+       SET last_generated_month = ?
+       WHERE id = ? AND (last_generated_month IS NULL OR last_generated_month < ?)`,
+      [thisMonth, rule.id, thisMonth]
+    );
+    if (claim.affectedRows === 0) continue; // 다른 요청이 먼저 선점함
 
     const occurredOn = `${thisMonth}-${String(rule.day_of_month).padStart(2, '0')}`;
-
     await pool.query(
       `INSERT INTO transactions (household_id, user_id, category_id, type, amount, memo, occurred_on)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -53,10 +66,5 @@ export async function syncRecurringTransactions(householdId: number): Promise<vo
         occurredOn,
       ]
     );
-
-    await pool.query('UPDATE recurring_transactions SET last_generated_month = ? WHERE id = ?', [
-      thisMonth,
-      rule.id,
-    ]);
   }
 }

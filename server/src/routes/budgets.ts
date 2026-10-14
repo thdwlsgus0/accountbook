@@ -3,6 +3,7 @@ import { RowDataPacket } from 'mysql2';
 import { pool } from '../config/db.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { requireHouseholdMember } from '../middlewares/household.js';
+import { currentYearMonth } from '../utils/date.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -17,11 +18,6 @@ interface BudgetBody {
   categoryId?: number;
   month?: string;
   amountLimit?: number;
-}
-
-function currentYearMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 router.get('/', async (req: Request, res: Response) => {
