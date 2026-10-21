@@ -832,6 +832,52 @@ form.card {
   }
 }
 
+.settlement-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.settlement-member {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--color-bg-accent);
+  }
+}
+
+.settlement-member-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.settlement-result {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  text-align: center;
+
+  strong {
+    font-weight: 800;
+  }
+
+  &.settled {
+    background: var(--color-income-soft);
+    color: var(--color-income);
+  }
+}
+
 .invite-code {
   font-size: 2rem;
   font-weight: 800;

@@ -43,6 +43,12 @@ interface TotalsCompareRow extends RowDataPacket {
   previousExpense: number;
 }
 
+interface MemberPaidRow extends RowDataPacket {
+  userId: number;
+  userName: string;
+  paid: number;
+}
+
 router.get('/', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
   const month = (req.query.month as string) || currentYearMonth();
@@ -134,6 +140,49 @@ router.get('/insights', async (req: Request, res: Response) => {
   );
 
   res.json({ month, previousMonth, categories, daily, totals });
+});
+
+// 이번 달 "누가 얼마 더 냈는지" 정산. 공용가계부라 모든 지출을 공동 지출로 보고,
+// 가계부 구성원(최대 2인)이 똑같이 나눠 부담한다고 가정했을 때 차액의 절반만 보내면
+// 정산이 끝나도록 계산한다.
+router.get('/settlement', async (req: Request, res: Response) => {
+  await syncRecurringTransactions(req.householdId);
+  const month = (req.query.month as string) || currentYearMonth();
+  const [start, end] = monthRange(month);
+
+  // household_members에서 시작해서 LEFT JOIN해야, 이번 달에 한 번도 지출을 안 적은
+  // 구성원도(paid = 0으로) 목록에 빠지지 않고 나온다.
+  const [members] = await pool.query<MemberPaidRow[]>(
+    `SELECT u.id AS userId, u.name AS userName, COALESCE(SUM(t.amount), 0) AS paid
+     FROM household_members hm
+     JOIN users u ON u.id = hm.user_id
+     LEFT JOIN transactions t ON t.user_id = hm.user_id AND t.household_id = hm.household_id
+       AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+     WHERE hm.household_id = ?
+     GROUP BY u.id, u.name
+     ORDER BY u.id`,
+    [start, end, req.householdId]
+  );
+
+  const totalExpense = members.reduce((sum, m) => sum + m.paid, 0);
+  const fairShare = members.length > 0 ? totalExpense / members.length : 0;
+
+  // 정산은 딱 2명일 때만 의미가 있다 (혼자면 나눌 상대가 없고, 가계부는 최대 2인이다).
+  let settlement: { fromUserId: number; fromUserName: string; toUserId: number; toUserName: string; amount: number } | null =
+    null;
+  if (members.length === 2) {
+    const [a, b] = members;
+    const diff = a.paid - b.paid; // 양수면 a가 더 많이 냄
+    const amount = Math.round(Math.abs(diff) / 2);
+    if (amount > 0) {
+      settlement =
+        diff > 0
+          ? { fromUserId: b.userId, fromUserName: b.userName, toUserId: a.userId, toUserName: a.userName, amount }
+          : { fromUserId: a.userId, fromUserName: a.userName, toUserId: b.userId, toUserName: b.userName, amount };
+    }
+  }
+
+  res.json({ month, members, totalExpense, fairShare, settlement });
 });
 
 export default router;

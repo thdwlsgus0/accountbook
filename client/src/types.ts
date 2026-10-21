@@ -120,6 +120,28 @@ export interface TotalsComparison {
   previousExpense: number;
 }
 
+export interface MemberPaid {
+  userId: number;
+  userName: string;
+  paid: number;
+}
+
+export interface Settlement {
+  fromUserId: number;
+  fromUserName: string;
+  toUserId: number;
+  toUserName: string;
+  amount: number;
+}
+
+export interface MonthSettlement {
+  month: string;
+  members: MemberPaid[];
+  totalExpense: number;
+  fairShare: number;
+  settlement: Settlement | null;
+}
+
 export interface MonthInsights {
   month: string;
   previousMonth: string;

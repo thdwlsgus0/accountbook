@@ -4,7 +4,8 @@ import { useHousehold } from '../context/HouseholdContext';
 import QuickAddForm from '../components/QuickAddForm';
 import TransactionList from '../components/TransactionList';
 import BudgetBar from '../components/BudgetBar';
-import { Category, MonthSummary, SavingsGoal, Transaction } from '../types';
+import SettlementCard from '../components/SettlementCard';
+import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -20,21 +21,24 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [settlement, setSettlement] = useState<MonthSettlement | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!currentId) return;
     setLoading(true);
-    const [summaryRes, categoriesRes, transactionsRes, goalsRes] = await Promise.all([
+    const [summaryRes, categoriesRes, transactionsRes, goalsRes, settlementRes] = await Promise.all([
       api.get<MonthSummary>(`/households/${currentId}/summary`, { params: { month } }),
       api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
       api.get<{ transactions: Transaction[] }>(`/households/${currentId}/transactions`, { params: { month } }),
       api.get<{ goals: SavingsGoal[] }>(`/households/${currentId}/goals`),
+      api.get<MonthSettlement>(`/households/${currentId}/summary/settlement`, { params: { month } }),
     ]);
     setSummary(summaryRes.data);
     setCategories(categoriesRes.data.categories);
     setTransactions(transactionsRes.data.transactions);
     setGoals(goalsRes.data.goals);
+    setSettlement(settlementRes.data);
     setLoading(false);
   }, [currentId, month]);
 
@@ -48,7 +52,7 @@ export default function DashboardPage() {
     setMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  if (loading || !summary || !currentId) {
+  if (loading || !summary || !settlement || !currentId) {
     return <LoadingScreen />;
   }
 
@@ -76,6 +80,8 @@ export default function DashboardPage() {
           <p className="summary-amount">{formatCurrency(summary.balance)}</p>
         </div>
       </div>
+
+      <SettlementCard data={settlement} />
 
       <QuickAddForm householdId={currentId} categories={categories} onAdded={load} />
 
