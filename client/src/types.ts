@@ -10,6 +10,9 @@ export interface User {
 
 export type TransactionType = 'income' | 'expense';
 
+// 'shared'(공동 지출, 둘이 나눠 부담) / 'personal'(내 개인 지출, 정산 대상 제외)
+export type SplitType = 'shared' | 'personal';
+
 export interface Household {
   id: number;
   name: string;
@@ -49,6 +52,9 @@ export interface Transaction {
   categoryColor: string | null;
   userId: number;
   userName: string;
+  splitType: SplitType;
+  // split_type이 'shared'일 때, 낸 사람(userId)이 부담하는 비율(%). 50이면 1:1.
+  payerSharePercent: number;
 }
 
 export interface RecurringRule {
@@ -60,6 +66,8 @@ export interface RecurringRule {
   isActive: boolean;
   categoryId: number | null;
   categoryName: string | null;
+  splitType: SplitType;
+  payerSharePercent: number;
 }
 
 export interface Budget {
@@ -138,7 +146,6 @@ export interface MonthSettlement {
   month: string;
   members: MemberPaid[];
   totalExpense: number;
-  fairShare: number;
   settlement: Settlement | null;
 }
 

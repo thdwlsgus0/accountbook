@@ -49,6 +49,12 @@ interface MemberPaidRow extends RowDataPacket {
   paid: number;
 }
 
+interface SharedExpenseRow extends RowDataPacket {
+  userId: number;
+  amount: number;
+  payerSharePercent: number;
+}
+
 router.get('/', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
   const month = (req.query.month as string) || currentYearMonth();
@@ -142,9 +148,13 @@ router.get('/insights', async (req: Request, res: Response) => {
   res.json({ month, previousMonth, categories, daily, totals });
 });
 
-// 이번 달 "누가 얼마 더 냈는지" 정산. 공용가계부라 모든 지출을 공동 지출로 보고,
-// 가계부 구성원(최대 2인)이 똑같이 나눠 부담한다고 가정했을 때 차액의 절반만 보내면
-// 정산이 끝나도록 계산한다.
+// 이번 달 "누가 얼마 더 냈는지" 정산.
+// - members[].paid: 그 사람이 이번 달에 낸 지출 전체(공동+개인 합친 금액) — "내가 얼마 썼나" 보여주는 용도.
+// - 실제 정산액은 "공동 지출(split_type='shared')"만 갖고 계산한다. 개인 지출(personal)은
+//   전부 낸 사람 혼자 부담하는 거라 정산 대상에서 빠진다.
+// - 공동 지출 한 건(amount)마다, 낸 사람(payer)은 payer_share_percent%만 자기 책임이고
+//   나머지는 상대방 책임이다 (50%면 1:1, 60%면 6:4로 낸 사람이 더 많이 부담).
+//   "실제로 낸 돈 - 자기 책임만큼" 을 다 더하면, 그게 상대방에게 받아야/줘야 할 금액이 된다.
 router.get('/settlement', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
   const month = (req.query.month as string) || currentYearMonth();
@@ -165,24 +175,48 @@ router.get('/settlement', async (req: Request, res: Response) => {
   );
 
   const totalExpense = members.reduce((sum, m) => sum + m.paid, 0);
-  const fairShare = members.length > 0 ? totalExpense / members.length : 0;
 
   // 정산은 딱 2명일 때만 의미가 있다 (혼자면 나눌 상대가 없고, 가계부는 최대 2인이다).
   let settlement: { fromUserId: number; fromUserName: string; toUserId: number; toUserName: string; amount: number } | null =
     null;
   if (members.length === 2) {
     const [a, b] = members;
-    const diff = a.paid - b.paid; // 양수면 a가 더 많이 냄
-    const amount = Math.round(Math.abs(diff) / 2);
+
+    const [sharedExpenses] = await pool.query<SharedExpenseRow[]>(
+      `SELECT user_id AS userId, amount, payer_share_percent AS payerSharePercent
+       FROM transactions
+       WHERE household_id = ? AND type = 'expense' AND split_type = 'shared'
+         AND occurred_on >= ? AND occurred_on < ?`,
+      [req.householdId, start, end]
+    );
+
+    const responsibility: Record<number, number> = { [a.userId]: 0, [b.userId]: 0 };
+    const sharedPaid: Record<number, number> = { [a.userId]: 0, [b.userId]: 0 };
+
+    for (const tx of sharedExpenses) {
+      const otherId = tx.userId === a.userId ? b.userId : a.userId;
+      // payerShare + otherShare가 항상 amount와 정확히 같도록, otherShare는 빼기로 구한다
+      // (각각 따로 반올림하면 거래가 많아질수록 1~2원씩 어긋날 수 있다).
+      const payerShare = Math.round((tx.amount * tx.payerSharePercent) / 100);
+      const otherShare = tx.amount - payerShare;
+      responsibility[tx.userId] += payerShare;
+      responsibility[otherId] += otherShare;
+      sharedPaid[tx.userId] += tx.amount;
+    }
+
+    // a가 실제로 낸 공동 지출 금액에서 a의 책임만큼을 뺀 값.
+    // 양수면 a가 자기 책임보다 더 많이 냈다는 뜻 -> b가 a에게 그만큼 보내면 된다.
+    const balanceA = sharedPaid[a.userId] - responsibility[a.userId];
+    const amount = Math.abs(balanceA);
     if (amount > 0) {
       settlement =
-        diff > 0
+        balanceA > 0
           ? { fromUserId: b.userId, fromUserName: b.userName, toUserId: a.userId, toUserName: a.userName, amount }
           : { fromUserId: a.userId, fromUserName: a.userName, toUserId: b.userId, toUserName: b.userName, amount };
     }
   }
 
-  res.json({ month, members, totalExpense, fairShare, settlement });
+  res.json({ month, members, totalExpense, settlement });
 });
 
 export default router;

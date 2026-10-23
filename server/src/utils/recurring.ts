@@ -9,6 +9,8 @@ interface RecurringRuleRow extends RowDataPacket {
   amount: number;
   memo: string | null;
   day_of_month: number;
+  split_type: 'shared' | 'personal';
+  payer_share_percent: number;
 }
 
 function currentYearMonth(date: Date = new Date()): string {
@@ -54,8 +56,9 @@ export async function syncRecurringTransactions(householdId: number): Promise<vo
 
     const occurredOn = `${thisMonth}-${String(rule.day_of_month).padStart(2, '0')}`;
     await pool.query(
-      `INSERT INTO transactions (household_id, user_id, category_id, type, amount, memo, occurred_on)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions
+         (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         householdId,
         rule.user_id,
@@ -64,6 +67,8 @@ export async function syncRecurringTransactions(householdId: number): Promise<vo
         rule.amount,
         rule.memo ?? '(고정비 자동 등록)',
         occurredOn,
+        rule.split_type,
+        rule.payer_share_percent,
       ]
     );
   }

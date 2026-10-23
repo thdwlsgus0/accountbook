@@ -1,5 +1,5 @@
 import { Transaction } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, splitBadgeLabel } from '../utils/format';
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
   if (transactions.length === 0) {
@@ -8,29 +8,33 @@ export default function TransactionList({ transactions }: { transactions: Transa
 
   return (
     <ul className="transaction-list">
-      {transactions.map((t) => (
-        <li key={t.id} className={`transaction-item ${t.type}`}>
-          <div className="transaction-main">
-            <span
-              className="category-dot"
-              style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
-            />
-            <div>
-              <p className="transaction-category">
-                {t.categoryName || '미분류'}
-                {t.memo ? ` · ${t.memo}` : ''}
-              </p>
-              <p className="muted small">
-                {t.occurredOn} · {t.userName}
-              </p>
+      {transactions.map((t) => {
+        const badge = splitBadgeLabel(t.splitType, t.payerSharePercent);
+        return (
+          <li key={t.id} className={`transaction-item ${t.type}`}>
+            <div className="transaction-main">
+              <span
+                className="category-dot"
+                style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
+              />
+              <div>
+                <p className="transaction-category">
+                  {t.categoryName || '미분류'}
+                  {t.memo ? ` · ${t.memo}` : ''}
+                  {badge && <span className="split-badge">{badge}</span>}
+                </p>
+                <p className="muted small">
+                  {t.occurredOn} · {t.userName}
+                </p>
+              </div>
             </div>
-          </div>
-          <span className={`amount ${t.type}`}>
-            {t.type === 'income' ? '+' : '-'}
-            {formatCurrency(t.amount)}
-          </span>
-        </li>
-      ))}
+            <span className={`amount ${t.type}`}>
+              {t.type === 'income' ? '+' : '-'}
+              {formatCurrency(t.amount)}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

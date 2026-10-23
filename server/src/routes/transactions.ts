@@ -5,6 +5,7 @@ import { requireAuth } from '../middlewares/auth.js';
 import { requireHouseholdMember } from '../middlewares/household.js';
 import { syncRecurringTransactions } from '../utils/recurring.js';
 import { currentYearMonth, monthRange } from '../utils/date.js';
+import { parseSplit, SplitType } from '../utils/split.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -20,6 +21,8 @@ interface TransactionRow extends RowDataPacket {
   categoryColor: string | null;
   userId: number;
   userName: string;
+  splitType: SplitType;
+  payerSharePercent: number;
 }
 
 interface TransactionBody {
@@ -28,6 +31,8 @@ interface TransactionBody {
   categoryId?: number | null;
   memo?: string | null;
   occurredOn?: string;
+  splitType?: string;
+  payerSharePercent?: number;
 }
 
 function isValidTransactionBody(body: TransactionBody): body is Required<Pick<TransactionBody, 'type' | 'amount' | 'occurredOn'>> & TransactionBody {
@@ -48,7 +53,8 @@ router.get('/', async (req: Request, res: Response) => {
   const [rows] = await pool.query<TransactionRow[]>(
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
-            t.user_id AS userId, u.name AS userName
+            t.user_id AS userId, u.name AS userName,
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
@@ -77,7 +83,8 @@ router.get('/export', async (req: Request, res: Response) => {
   const [rows] = await pool.query<TransactionRow[]>(
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
-            t.user_id AS userId, u.name AS userName
+            t.user_id AS userId, u.name AS userName,
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
@@ -87,7 +94,7 @@ router.get('/export', async (req: Request, res: Response) => {
     range ? [req.householdId, range[0], range[1]] : [req.householdId]
   );
 
-  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자'].map(csvCell).join(',');
+  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자', '구분', '낸 사람 부담 비율'].map(csvCell).join(',');
   const lines = rows.map((r) =>
     [
       r.occurredOn,
@@ -96,6 +103,8 @@ router.get('/export', async (req: Request, res: Response) => {
       r.amount,
       r.memo || '',
       r.userName,
+      r.splitType === 'personal' ? '개인' : '공동',
+      r.splitType === 'personal' ? '-' : `${r.payerSharePercent}%`,
     ]
       .map(csvCell)
       .join(',')
@@ -113,12 +122,18 @@ router.post('/', async (req: Request<{}, {}, TransactionBody>, res: Response) =>
   if (!isValidTransactionBody(req.body)) {
     return res.status(400).json({ error: { message: '종류, 금액(0보다 큼), 날짜를 확인해주세요.' } });
   }
+  const split = parseSplit(req.body);
+  if (!split.ok) {
+    return res.status(400).json({ error: { message: split.message } });
+  }
   const { type, amount, categoryId, memo, occurredOn } = req.body;
+  const { splitType, payerSharePercent } = split.value;
 
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO transactions (household_id, user_id, category_id, type, amount, memo, occurred_on)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [req.householdId, req.userId, categoryId || null, type, amount, memo || null, occurredOn]
+    `INSERT INTO transactions
+       (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [req.householdId, req.userId, categoryId || null, type, amount, memo || null, occurredOn, splitType, payerSharePercent]
   );
   res.status(201).json({ id: result.insertId });
 });
@@ -127,12 +142,18 @@ router.put('/:id', async (req: Request<{ id: string }, {}, TransactionBody>, res
   if (!isValidTransactionBody(req.body)) {
     return res.status(400).json({ error: { message: '종류, 금액(0보다 큼), 날짜를 확인해주세요.' } });
   }
+  const split = parseSplit(req.body);
+  if (!split.ok) {
+    return res.status(400).json({ error: { message: split.message } });
+  }
   const { type, amount, categoryId, memo, occurredOn } = req.body;
+  const { splitType, payerSharePercent } = split.value;
 
   const [result] = await pool.query<ResultSetHeader>(
-    `UPDATE transactions SET type = ?, amount = ?, category_id = ?, memo = ?, occurred_on = ?
+    `UPDATE transactions
+     SET type = ?, amount = ?, category_id = ?, memo = ?, occurred_on = ?, split_type = ?, payer_share_percent = ?
      WHERE id = ? AND household_id = ?`,
-    [type, amount, categoryId || null, memo || null, occurredOn, req.params.id, req.householdId]
+    [type, amount, categoryId || null, memo || null, occurredOn, splitType, payerSharePercent, req.params.id, req.householdId]
   );
   if (result.affectedRows === 0) {
     return res.status(404).json({ error: { message: '거래 내역을 찾을 수 없습니다.' } });

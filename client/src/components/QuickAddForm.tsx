@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
-import { Category, TransactionType } from '../types';
+import { Category, SplitType, TransactionType } from '../types';
 import Spinner from './Spinner';
+import SplitControl from './SplitControl';
 
 interface QuickAddFormProps {
   householdId: number;
@@ -17,6 +18,8 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
   const [categoryId, setCategoryId] = useState('');
   const [memo, setMemo] = useState('');
   const [occurredOn, setOccurredOn] = useState(() => new Date().toISOString().slice(0, 10));
+  const [splitType, setSplitType] = useState<SplitType>('shared');
+  const [payerSharePercent, setPayerSharePercent] = useState(50);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,6 +36,10 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
       setError('금액을 입력해주세요.');
       return;
     }
+    if (type === 'expense' && splitType === 'shared' && (payerSharePercent < 1 || payerSharePercent > 99)) {
+      setError('분담 비율은 1~99 사이로 입력해주세요.');
+      return;
+    }
     setSubmitting(true);
     try {
       await api.post(`/households/${householdId}/transactions`, {
@@ -41,6 +48,9 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
         categoryId: categoryId || null,
         memo: memo || null,
         occurredOn,
+        // 수입은 나눠 부담할 일이 없으니 그냥 공동/100%로 둔다 (서버도 이 값을 신경 안 씀).
+        splitType: type === 'expense' ? splitType : 'shared',
+        payerSharePercent: type === 'expense' ? payerSharePercent : 50,
       });
       setAmount('');
       setMemo('');
@@ -95,6 +105,17 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
         <input type="text" placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} />
         <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
       </div>
+
+      {type === 'expense' && (
+        <SplitControl
+          splitType={splitType}
+          payerSharePercent={payerSharePercent}
+          onChange={(next) => {
+            setSplitType(next.splitType);
+            setPayerSharePercent(next.payerSharePercent);
+          }}
+        />
+      )}
 
       {error && <p className="error">{error}</p>}
       <button type="submit" disabled={submitting}>

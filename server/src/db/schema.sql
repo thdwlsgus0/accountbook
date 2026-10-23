@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 금액은 원 단위 정수로 저장한다 (실수 오차 방지)
+-- split_type: 'shared'(공동 지출, 둘이 나눠 부담)인지 'personal'(내 개인 지출,
+--   정산 대상에서 빠짐)인지. income에는 의미 없고 기본값 그대로 둔다.
+-- payer_share_percent: split_type='shared'일 때, 이 지출을 "실제로 낸 사람(user_id)"이
+--   부담하는 비율(%). 50이면 1:1, 60이면 6:4로 낸 사람이 더 많이 부담. personal이면 쓰지 않는다.
 CREATE TABLE IF NOT EXISTS transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   household_id INT NOT NULL,
@@ -49,6 +53,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount INT NOT NULL,
   memo VARCHAR(255),
   occurred_on DATE NOT NULL,
+  split_type ENUM('shared', 'personal') NOT NULL DEFAULT 'shared',
+  payer_share_percent TINYINT NOT NULL DEFAULT 50,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -57,6 +63,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 고정비 / 반복 지출 규칙. day_of_month는 모든 달에 존재하는 1~28일로 제한한다.
+-- split_type/payer_share_percent는 위 transactions와 같은 의미이고, 매달 자동 생성되는
+-- 거래에도 그대로 복사된다 (예: 월세를 매번 6:4로 나누기로 해뒀으면 자동 기록도 6:4로 찍힌다).
 CREATE TABLE IF NOT EXISTS recurring_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   household_id INT NOT NULL,
@@ -69,6 +77,8 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
   start_month CHAR(7) NOT NULL,
   last_generated_month CHAR(7) NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  split_type ENUM('shared', 'personal') NOT NULL DEFAULT 'shared',
+  payer_share_percent TINYINT NOT NULL DEFAULT 50,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

@@ -4,6 +4,7 @@ import { pool } from "../config/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { requireHouseholdMember } from "../middlewares/household.js";
 import { currentYearMonth } from "../utils/date.js";
+import { parseSplit, SplitType } from "../utils/split.js";
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -17,6 +18,8 @@ interface RecurringRow extends RowDataPacket {
   isActive: boolean;
   categoryId: number | null;
   categoryName: string | null;
+  splitType: SplitType;
+  payerSharePercent: number;
 }
 
 interface RecurringBody {
@@ -25,12 +28,15 @@ interface RecurringBody {
   categoryId?: number | null;
   memo?: string | null;
   dayOfMonth?: number;
+  splitType?: string;
+  payerSharePercent?: number;
 }
 
 router.get("/", async (req: Request, res: Response) => {
   const [rows] = await pool.query<RecurringRow[]>(
     `SELECT r.id, r.type, r.amount, r.memo, r.day_of_month AS dayOfMonth,
-            r.is_active AS isActive, r.category_id AS categoryId, c.name AS categoryName
+            r.is_active AS isActive, r.category_id AS categoryId, c.name AS categoryName,
+            r.split_type AS splitType, r.payer_share_percent AS payerSharePercent
      FROM recurring_transactions r
      LEFT JOIN categories c ON c.id = r.category_id
      WHERE r.household_id = ?
@@ -62,11 +68,15 @@ router.post("/", async (req: Request<{}, {}, RecurringBody>, res: Response) => {
         },
       });
   }
+  const split = parseSplit(req.body);
+  if (!split.ok) {
+    return res.status(400).json({ error: { message: split.message } });
+  }
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO recurring_transactions
-       (household_id, user_id, category_id, type, amount, memo, day_of_month, start_month)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (household_id, user_id, category_id, type, amount, memo, day_of_month, start_month, split_type, payer_share_percent)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       req.householdId,
       req.userId,
@@ -76,6 +86,8 @@ router.post("/", async (req: Request<{}, {}, RecurringBody>, res: Response) => {
       memo || null,
       dayOfMonth,
       currentYearMonth(),
+      split.value.splitType,
+      split.value.payerSharePercent,
     ],
   );
   res.status(201).json({ id: result.insertId });

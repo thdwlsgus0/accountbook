@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
-import { Category, Transaction, TransactionType } from '../types';
-import { formatCurrency } from '../utils/format';
+import SplitControl from '../components/SplitControl';
+import { Category, SplitType, Transaction, TransactionType } from '../types';
+import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import { triggerDownload } from '../utils/download';
 
 function currentYearMonth(): string {
@@ -16,6 +17,8 @@ interface EditForm {
   categoryId: string;
   memo: string;
   occurredOn: string;
+  splitType: SplitType;
+  payerSharePercent: number;
 }
 
 export default function TransactionsPage() {
@@ -48,6 +51,8 @@ export default function TransactionsPage() {
       categoryId: t.categoryId ? String(t.categoryId) : '',
       memo: t.memo || '',
       occurredOn: t.occurredOn,
+      splitType: t.splitType,
+      payerSharePercent: t.payerSharePercent,
     });
   }
 
@@ -131,6 +136,13 @@ export default function TransactionsPage() {
                     onChange={(e) => setEditForm({ ...editForm, occurredOn: e.target.value })}
                   />
                 </div>
+                {editForm.type === 'expense' && (
+                  <SplitControl
+                    splitType={editForm.splitType}
+                    payerSharePercent={editForm.payerSharePercent}
+                    onChange={(next) => setEditForm({ ...editForm, ...next })}
+                  />
+                )}
                 <div className="edit-row-actions">
                   <button type="submit" onClick={() => saveEdit(t.id)}>
                     저장
@@ -151,6 +163,9 @@ export default function TransactionsPage() {
                     <p className="transaction-category">
                       {t.categoryName || '미분류'}
                       {t.memo ? ` · ${t.memo}` : ''}
+                      {splitBadgeLabel(t.splitType, t.payerSharePercent) && (
+                        <span className="split-badge">{splitBadgeLabel(t.splitType, t.payerSharePercent)}</span>
+                      )}
                     </p>
                     <p className="muted small">
                       {t.occurredOn} · {t.userName}

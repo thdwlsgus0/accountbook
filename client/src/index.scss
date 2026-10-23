@@ -569,7 +569,67 @@ form.card {
       color: white;
       box-shadow: var(--shadow-sm);
     }
+
+    // 공동/개인 지출 구분 토글(SplitControl)도 같은 .type-toggle을 재사용한다.
+    &.active.shared {
+      background: var(--color-primary);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    &.active.personal {
+      background: var(--color-muted);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
   }
+}
+
+.split-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.split-ratio {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+
+  input {
+    width: 3.6em;
+    padding: 0.35rem 0.4rem;
+    text-align: center;
+  }
+}
+
+.split-presets {
+  display: flex;
+  gap: 0.3rem;
+
+  button {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
+
+    &.active {
+      background: var(--color-primary-soft);
+      border-color: var(--color-primary);
+      color: var(--color-primary-dark);
+    }
+  }
+}
+
+.split-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-bg-accent);
+  color: var(--color-muted);
+  vertical-align: middle;
 }
 
 .transaction-list {

@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
-import { Category, RecurringRule, TransactionType } from '../types';
-import { formatCurrency } from '../utils/format';
+import SplitControl from '../components/SplitControl';
+import { Category, RecurringRule, SplitType, TransactionType } from '../types';
+import { formatCurrency, splitBadgeLabel } from '../utils/format';
 
 interface RecurringForm {
   type: TransactionType;
@@ -10,9 +11,19 @@ interface RecurringForm {
   categoryId: string;
   memo: string;
   dayOfMonth: string;
+  splitType: SplitType;
+  payerSharePercent: number;
 }
 
-const EMPTY_FORM: RecurringForm = { type: 'expense', amount: '', categoryId: '', memo: '', dayOfMonth: '1' };
+const EMPTY_FORM: RecurringForm = {
+  type: 'expense',
+  amount: '',
+  categoryId: '',
+  memo: '',
+  dayOfMonth: '1',
+  splitType: 'shared',
+  payerSharePercent: 50,
+};
 
 export default function RecurringPage() {
   const { currentId } = useHousehold();
@@ -44,6 +55,8 @@ export default function RecurringPage() {
         amount: Number(form.amount),
         dayOfMonth: Number(form.dayOfMonth),
         categoryId: form.categoryId || null,
+        splitType: form.type === 'expense' ? form.splitType : 'shared',
+        payerSharePercent: form.type === 'expense' ? form.payerSharePercent : 50,
       });
       setForm(EMPTY_FORM);
       load();
@@ -118,34 +131,45 @@ export default function RecurringPage() {
           />
           일에 자동 기록
         </label>
+        {form.type === 'expense' && (
+          <SplitControl
+            splitType={form.splitType}
+            payerSharePercent={form.payerSharePercent}
+            onChange={(next) => setForm({ ...form, ...next })}
+          />
+        )}
         {error && <p className="error">{error}</p>}
         <button type="submit">등록</button>
       </form>
 
       <ul className="transaction-list">
-        {recurring.map((r) => (
-          <li key={r.id} className={`transaction-item ${r.type}`}>
-            <div className="transaction-main">
-              <div>
-                <p className="transaction-category">
-                  {r.categoryName || '미분류'}
-                  {r.memo ? ` · ${r.memo}` : ''}
-                </p>
-                <p className="muted small">
-                  매월 {r.dayOfMonth}일 · {r.isActive ? '활성' : '중지됨'}
-                </p>
+        {recurring.map((r) => {
+          const badge = splitBadgeLabel(r.splitType, r.payerSharePercent);
+          return (
+            <li key={r.id} className={`transaction-item ${r.type}`}>
+              <div className="transaction-main">
+                <div>
+                  <p className="transaction-category">
+                    {r.categoryName || '미분류'}
+                    {r.memo ? ` · ${r.memo}` : ''}
+                    {badge && <span className="split-badge">{badge}</span>}
+                  </p>
+                  <p className="muted small">
+                    매월 {r.dayOfMonth}일 · {r.isActive ? '활성' : '중지됨'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="transaction-actions">
-              <span className={`amount ${r.type}`}>
-                {r.type === 'income' ? '+' : '-'}
-                {formatCurrency(r.amount)}
-              </span>
-              <button onClick={() => toggleActive(r)}>{r.isActive ? '중지' : '재개'}</button>
-              <button onClick={() => handleDelete(r.id)}>삭제</button>
-            </div>
-          </li>
-        ))}
+              <div className="transaction-actions">
+                <span className={`amount ${r.type}`}>
+                  {r.type === 'income' ? '+' : '-'}
+                  {formatCurrency(r.amount)}
+                </span>
+                <button onClick={() => toggleActive(r)}>{r.isActive ? '중지' : '재개'}</button>
+                <button onClick={() => handleDelete(r.id)}>삭제</button>
+              </div>
+            </li>
+          );
+        })}
         {recurring.length === 0 && <p className="muted">등록된 고정비가 없습니다.</p>}
       </ul>
     </div>
