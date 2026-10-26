@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '../api/client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, getErrorMessage } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SplitControl from '../components/SplitControl';
-import { Category, SplitType, Transaction, TransactionType } from '../types';
+import Spinner from '../components/Spinner';
+import { Category, HouseholdDetail, SplitType, Transaction, TransactionType } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import { triggerDownload } from '../utils/download';
+import { computeSettlement } from '../utils/settlement';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -26,17 +28,26 @@ export default function TransactionsPage() {
   const [month, setMonth] = useState(currentYearMonth());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [household, setHousehold] = useState<HouseholdDetail | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
+  // "더치페이" — 공동 지출 중 고른 건들만 바로 정산 완료로 표시하는 모드.
+  const [dutchMode, setDutchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [settling, setSettling] = useState(false);
+  const [settleError, setSettleError] = useState('');
+
   const load = useCallback(async () => {
     if (!currentId) return;
-    const [tRes, cRes] = await Promise.all([
+    const [tRes, cRes, hRes] = await Promise.all([
       api.get<{ transactions: Transaction[] }>(`/households/${currentId}/transactions`, { params: { month } }),
       api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
+      api.get<HouseholdDetail>(`/households/${currentId}`),
     ]);
     setTransactions(tRes.data.transactions);
     setCategories(cRes.data.categories);
+    setHousehold(hRes.data);
   }, [currentId, month]);
 
   useEffect(() => {
@@ -83,6 +94,49 @@ export default function TransactionsPage() {
     triggerDownload(res, scope === 'month' ? `transactions_${month}.csv` : 'transactions_all.csv');
   }
 
+  // 더치페이로 고를 수 있는 건: 공동 지출이면서(개인 지출은 정산 개념이 없음) 아직 정산 안 된 것.
+  const dutchEligible = useMemo(
+    () => transactions.filter((t) => t.type === 'expense' && t.splitType === 'shared' && !t.isSettled),
+    [transactions]
+  );
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleDutchMode() {
+    setDutchMode((prev) => !prev);
+    setSelectedIds(new Set());
+    setSettleError('');
+  }
+
+  const selectedTransactions = transactions.filter((t) => selectedIds.has(t.id));
+  const selectedTotal = selectedTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const members = household?.members ?? [];
+  const settlementPreview =
+    members.length === 2 ? computeSettlement(selectedTransactions, [members[0].id, members[1].id]) : null;
+
+  async function handleSettle() {
+    if (!currentId || selectedIds.size === 0) return;
+    setSettling(true);
+    setSettleError('');
+    try {
+      await api.post(`/households/${currentId}/transactions/settle`, { ids: Array.from(selectedIds) });
+      setDutchMode(false);
+      setSelectedIds(new Set());
+      load();
+    } catch (err) {
+      setSettleError(getErrorMessage(err, '정산 처리에 실패했습니다.'));
+    } finally {
+      setSettling(false);
+    }
+  }
+
   return (
     <div className="page">
       <div className="month-nav">
@@ -96,94 +150,144 @@ export default function TransactionsPage() {
         <button type="button" onClick={() => handleExport('all')}>
           전체 내역 백업(CSV)
         </button>
+        {members.length === 2 && (
+          <button type="button" className={dutchMode ? 'active' : ''} onClick={toggleDutchMode}>
+            {dutchMode ? '더치페이 종료' : '더치페이'}
+          </button>
+        )}
       </div>
 
-      <ul className="transaction-list">
-        {transactions.map((t) => (
-          <li key={t.id} className={`transaction-item ${t.type}`}>
-            {editingId === t.id && editForm ? (
-              <div className="edit-row">
-                <div className="form-row">
-                  <select
-                    value={editForm.categoryId}
-                    onChange={(e) => setEditForm({ ...editForm, categoryId: e.target.value })}
-                  >
-                    <option value="">미분류</option>
-                    {categories
-                      .filter((c) => c.type === editForm.type)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={editForm.amount}
-                    onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="form-row">
-                  <input
-                    type="text"
-                    placeholder="메모"
-                    value={editForm.memo}
-                    onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
-                  />
-                  <input
-                    type="date"
-                    value={editForm.occurredOn}
-                    onChange={(e) => setEditForm({ ...editForm, occurredOn: e.target.value })}
-                  />
-                </div>
-                {editForm.type === 'expense' && (
-                  <SplitControl
-                    splitType={editForm.splitType}
-                    payerSharePercent={editForm.payerSharePercent}
-                    onChange={(next) => setEditForm({ ...editForm, ...next })}
-                  />
-                )}
-                <div className="edit-row-actions">
-                  <button type="submit" onClick={() => saveEdit(t.id)}>
-                    저장
-                  </button>
-                  <button type="button" onClick={() => setEditingId(null)}>
-                    취소
-                  </button>
-                </div>
-              </div>
+      {dutchMode && (
+        <div className="card dutch-panel">
+          <p className="muted small">
+            정산할 공동 지출을 체크하세요. (정산 안 된 공동 지출 {dutchEligible.length}건 중 선택 가능)
+          </p>
+          {selectedIds.size > 0 && (
+            <p className="dutch-selected-total">
+              {selectedIds.size}건 선택 · 합계 {formatCurrency(selectedTotal)}
+            </p>
+          )}
+          {selectedIds.size > 0 &&
+            (settlementPreview ? (
+              <p className="settlement-result">
+                <strong>{members.find((m) => m.id === settlementPreview.fromUserId)?.name}</strong>님이{' '}
+                <strong>{members.find((m) => m.id === settlementPreview.toUserId)?.name}</strong>님에게{' '}
+                <strong>{formatCurrency(settlementPreview.amount)}</strong> 보내면 정산 끝!
+              </p>
             ) : (
-              <>
-                <div className="transaction-main">
-                  <span
-                    className="category-dot"
-                    style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
-                  />
-                  <div>
-                    <p className="transaction-category">
-                      {t.categoryName || '미분류'}
-                      {t.memo ? ` · ${t.memo}` : ''}
-                      {splitBadgeLabel(t.splitType, t.payerSharePercent) && (
-                        <span className="split-badge">{splitBadgeLabel(t.splitType, t.payerSharePercent)}</span>
-                      )}
-                    </p>
-                    <p className="muted small">
-                      {t.occurredOn} · {t.userName}
-                    </p>
+              <p className="settlement-result settled">이미 딱 맞게 냈어요! 🎉</p>
+            ))}
+          {settleError && <p className="error">{settleError}</p>}
+          <button type="submit" disabled={selectedIds.size === 0 || settling} onClick={handleSettle}>
+            {settling && <Spinner size="sm" variant="on-primary" />}
+            선택한 {selectedIds.size}건 정산 완료로 표시
+          </button>
+        </div>
+      )}
+
+      <ul className="transaction-list">
+        {transactions.map((t) => {
+          const selectable = dutchMode && t.type === 'expense' && t.splitType === 'shared' && !t.isSettled;
+          return (
+            <li key={t.id} className={`transaction-item ${t.type}`}>
+              {editingId === t.id && editForm ? (
+                <div className="edit-row">
+                  <div className="form-row">
+                    <select
+                      value={editForm.categoryId}
+                      onChange={(e) => setEditForm({ ...editForm, categoryId: e.target.value })}
+                    >
+                      <option value="">미분류</option>
+                      {categories
+                        .filter((c) => c.type === editForm.type)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="메모"
+                      value={editForm.memo}
+                      onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
+                    />
+                    <input
+                      type="date"
+                      value={editForm.occurredOn}
+                      onChange={(e) => setEditForm({ ...editForm, occurredOn: e.target.value })}
+                    />
+                  </div>
+                  {editForm.type === 'expense' && (
+                    <SplitControl
+                      splitType={editForm.splitType}
+                      payerSharePercent={editForm.payerSharePercent}
+                      onChange={(next) => setEditForm({ ...editForm, ...next })}
+                    />
+                  )}
+                  <div className="edit-row-actions">
+                    <button type="submit" onClick={() => saveEdit(t.id)}>
+                      저장
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)}>
+                      취소
+                    </button>
                   </div>
                 </div>
-                <div className="transaction-actions">
-                  <span className={`amount ${t.type}`}>
-                    {t.type === 'income' ? '+' : '-'}
-                    {formatCurrency(t.amount)}
-                  </span>
-                  <button onClick={() => startEdit(t)}>수정</button>
-                  <button onClick={() => handleDelete(t.id)}>삭제</button>
-                </div>
-              </>
-            )}
-          </li>
-        ))}
+              ) : (
+                <>
+                  {dutchMode && (
+                    <input
+                      type="checkbox"
+                      className="dutch-checkbox"
+                      disabled={!selectable}
+                      checked={selectedIds.has(t.id)}
+                      onChange={() => toggleSelect(t.id)}
+                    />
+                  )}
+                  <div className="transaction-main">
+                    <span
+                      className="category-dot"
+                      style={{ backgroundColor: t.categoryColor || '#ccc', color: t.categoryColor || '#ccc' }}
+                    />
+                    <div>
+                      <p className="transaction-category">
+                        {t.categoryName || '미분류'}
+                        {t.memo ? ` · ${t.memo}` : ''}
+                        {splitBadgeLabel(t.splitType, t.payerSharePercent) && (
+                          <span className="split-badge">{splitBadgeLabel(t.splitType, t.payerSharePercent)}</span>
+                        )}
+                        {t.isSettled && <span className="split-badge settled">정산됨</span>}
+                      </p>
+                      <p className="muted small">
+                        {t.occurredOn} · {t.userName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="transaction-actions">
+                    <span className={`amount ${t.type}`}>
+                      {t.type === 'income' ? '+' : '-'}
+                      {formatCurrency(t.amount)}
+                    </span>
+                    {!dutchMode && (
+                      <>
+                        <button onClick={() => startEdit(t)}>수정</button>
+                        <button onClick={() => handleDelete(t.id)}>삭제</button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </li>
+          );
+        })}
         {transactions.length === 0 && <p className="muted">기록된 내역이 없습니다.</p>}
       </ul>
     </div>

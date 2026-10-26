@@ -23,6 +23,7 @@ interface TransactionRow extends RowDataPacket {
   userName: string;
   splitType: SplitType;
   payerSharePercent: number;
+  isSettled: boolean;
 }
 
 interface TransactionBody {
@@ -54,7 +55,8 @@ router.get('/', async (req: Request, res: Response) => {
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
             t.user_id AS userId, u.name AS userName,
-            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
+            t.is_settled AS isSettled
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
@@ -84,7 +86,8 @@ router.get('/export', async (req: Request, res: Response) => {
     `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
             t.user_id AS userId, u.name AS userName,
-            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
+            t.is_settled AS isSettled
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
@@ -94,7 +97,9 @@ router.get('/export', async (req: Request, res: Response) => {
     range ? [req.householdId, range[0], range[1]] : [req.householdId]
   );
 
-  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자', '구분', '낸 사람 부담 비율'].map(csvCell).join(',');
+  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자', '구분', '낸 사람 부담 비율', '정산 여부'].map(
+    csvCell
+  ).join(',');
   const lines = rows.map((r) =>
     [
       r.occurredOn,
@@ -105,6 +110,7 @@ router.get('/export', async (req: Request, res: Response) => {
       r.userName,
       r.splitType === 'personal' ? '개인' : '공동',
       r.splitType === 'personal' ? '-' : `${r.payerSharePercent}%`,
+      r.splitType === 'personal' ? '-' : r.isSettled ? '완료' : '대기',
     ]
       .map(csvCell)
       .join(',')
@@ -116,6 +122,24 @@ router.get('/export', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(csv);
+});
+
+// "더치페이" — 고른 공동 지출 건들을 그 자리에서 정산 완료로 표시한다.
+// 정산 완료된 건은 월간 정산(/summary/settlement) 계산에서 빠진다(이미 처리된 거니까).
+// 개인 지출(personal)은 정산 개념이 없으니 WHERE에서 자연스럽게 걸러지고 조용히 무시된다.
+router.post('/settle', async (req: Request<{}, {}, { ids?: number[] }>, res: Response) => {
+  const ids = req.body.ids;
+  if (!Array.isArray(ids) || ids.length === 0 || !ids.every((id) => Number.isInteger(id))) {
+    return res.status(400).json({ error: { message: '정산 처리할 내역을 선택해주세요.' } });
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE transactions SET is_settled = TRUE
+     WHERE household_id = ? AND split_type = 'shared' AND id IN (${placeholders})`,
+    [req.householdId, ...ids]
+  );
+  res.json({ updated: result.affectedRows });
 });
 
 router.post('/', async (req: Request<{}, {}, TransactionBody>, res: Response) => {

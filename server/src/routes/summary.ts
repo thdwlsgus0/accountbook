@@ -182,10 +182,12 @@ router.get('/settlement', async (req: Request, res: Response) => {
   if (members.length === 2) {
     const [a, b] = members;
 
+    // is_settled = FALSE: "더치페이"로 이미 그때그때 정산해버린 건은 여기서 또 계산하면
+    // 중복으로 잡히니 빼야 한다.
     const [sharedExpenses] = await pool.query<SharedExpenseRow[]>(
       `SELECT user_id AS userId, amount, payer_share_percent AS payerSharePercent
        FROM transactions
-       WHERE household_id = ? AND type = 'expense' AND split_type = 'shared'
+       WHERE household_id = ? AND type = 'expense' AND split_type = 'shared' AND is_settled = FALSE
          AND occurred_on >= ? AND occurred_on < ?`,
       [req.householdId, start, end]
     );

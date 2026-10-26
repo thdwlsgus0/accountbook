@@ -55,6 +55,8 @@ export interface Transaction {
   splitType: SplitType;
   // split_type이 'shared'일 때, 낸 사람(userId)이 부담하는 비율(%). 50이면 1:1.
   payerSharePercent: number;
+  // "더치페이"로 이미 그때그때 정산해버린 건이면 true. 월간 정산에서는 빠진다.
+  isSettled: boolean;
 }
 
 export interface RecurringRule {

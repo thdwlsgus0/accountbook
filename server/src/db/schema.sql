@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   occurred_on DATE NOT NULL,
   split_type ENUM('shared', 'personal') NOT NULL DEFAULT 'shared',
   payer_share_percent TINYINT NOT NULL DEFAULT 50,
+  -- "더치페이" 기능용: 공동 지출 중 특정 건만 그때그때 미리 정산해버린 경우 TRUE로 표시한다.
+  -- TRUE가 되면 월간 정산(/summary/settlement) 계산에서 이 건은 빠진다(이미 처리됐으니까).
+  is_settled BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
