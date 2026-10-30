@@ -47,6 +47,10 @@ app.use('/api/households/:householdId/goals', goalsRouter);
 // 공통 에러 핸들러. express-async-errors 덕분에 라우트 핸들러의 async 함수 안에서
 // 던진(throw) 에러도 각 라우트에서 try/catch 없이 여기로 모인다.
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  // express.json/raw가 크기 한도를 넘는 본문(예: 너무 큰 영수증 사진)을 만나면 이 type의 에러를 던진다.
+  if ((err as { type?: string }).type === 'entity.too.large') {
+    return res.status(413).json({ error: { message: '파일이 너무 큽니다.' } });
+  }
   console.error(err);
   res.status(500).json({ error: { message: '서버 오류가 발생했습니다.' } });
 });

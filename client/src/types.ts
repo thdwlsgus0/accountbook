@@ -57,6 +57,8 @@ export interface Transaction {
   payerSharePercent: number;
   // "더치페이"로 이미 그때그때 정산해버린 건이면 true. 월간 정산에서는 빠진다.
   isSettled: boolean;
+  // 영수증 사진이 첨부돼 있는지. 사진 자체는 목록에 안 실리고, 볼 때 따로 받아온다.
+  hasReceipt: boolean;
 }
 
 export interface RecurringRule {

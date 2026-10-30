@@ -65,6 +65,18 @@ CREATE TABLE IF NOT EXISTS transactions (
   INDEX idx_household_occurred (household_id, occurred_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 지출에 첨부하는 영수증 사진. 서버가 Vercel(서버리스)에서도 돌아서 로컬 디스크에 파일을 둘 수 없으므로
+-- 이미지 바이트를 DB에 그대로 저장한다. 클라이언트가 업로드 전에 긴 변 1600px JPEG로 줄여서 보내므로
+-- 한 장에 보통 수백 KB 수준이다. 거래 목록 조회가 무거워지지 않도록 transactions와 테이블을 분리했고,
+-- 거래 1건당 사진 1장(다시 올리면 교체)이다. 거래가 지워지면 사진도 같이 지워진다.
+CREATE TABLE IF NOT EXISTS transaction_receipts (
+  transaction_id INT PRIMARY KEY,
+  mime_type VARCHAR(50) NOT NULL,
+  data MEDIUMBLOB NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 고정비 / 반복 지출 규칙. day_of_month는 모든 달에 존재하는 1~28일로 제한한다.
 -- split_type/payer_share_percent는 위 transactions와 같은 의미이고, 매달 자동 생성되는
 -- 거래에도 그대로 복사된다 (예: 월세를 매번 6:4로 나누기로 해뒀으면 자동 기록도 6:4로 찍힌다).

@@ -3,6 +3,8 @@ import { api, getErrorMessage } from '../api/client';
 import { Category, SplitType, TransactionType } from '../types';
 import Spinner from './Spinner';
 import SplitControl from './SplitControl';
+import ReceiptPicker from './ReceiptPicker';
+import { uploadReceipt } from '../utils/receipt';
 
 interface QuickAddFormProps {
   householdId: number;
@@ -20,6 +22,7 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
   const [occurredOn, setOccurredOn] = useState(() => new Date().toISOString().slice(0, 10));
   const [splitType, setSplitType] = useState<SplitType>('shared');
   const [payerSharePercent, setPayerSharePercent] = useState(50);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,7 +45,7 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
     }
     setSubmitting(true);
     try {
-      await api.post(`/households/${householdId}/transactions`, {
+      const res = await api.post<{ id: number }>(`/households/${householdId}/transactions`, {
         type,
         amount: Number(amount),
         categoryId: categoryId || null,
@@ -54,6 +57,15 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
       });
       setAmount('');
       setMemo('');
+      if (type === 'expense' && receiptFile) {
+        // 내역 자체는 이미 저장됐으니, 사진만 실패하면 그렇다고 알려주고 목록은 갱신한다.
+        try {
+          await uploadReceipt(householdId, res.data.id, receiptFile);
+        } catch (err) {
+          setError(getErrorMessage(err, '내역은 기록됐지만 영수증 사진 업로드에 실패했습니다.'));
+        }
+      }
+      setReceiptFile(null);
       onAdded();
     } catch (err) {
       setError(getErrorMessage(err, '기록에 실패했습니다.'));
@@ -107,14 +119,17 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
       </div>
 
       {type === 'expense' && (
-        <SplitControl
-          splitType={splitType}
-          payerSharePercent={payerSharePercent}
-          onChange={(next) => {
-            setSplitType(next.splitType);
-            setPayerSharePercent(next.payerSharePercent);
-          }}
-        />
+        <>
+          <SplitControl
+            splitType={splitType}
+            payerSharePercent={payerSharePercent}
+            onChange={(next) => {
+              setSplitType(next.splitType);
+              setPayerSharePercent(next.payerSharePercent);
+            }}
+          />
+          <ReceiptPicker file={receiptFile} onChange={setReceiptFile} />
+        </>
       )}
 
       {error && <p className="error">{error}</p>}

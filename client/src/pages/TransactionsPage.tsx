@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SplitControl from '../components/SplitControl';
+import ReceiptButton from '../components/ReceiptButton';
+import ReceiptPicker from '../components/ReceiptPicker';
 import Spinner from '../components/Spinner';
 import { Category, HouseholdDetail, SplitType, Transaction, TransactionType } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import { triggerDownload } from '../utils/download';
 import { computeSettlement } from '../utils/settlement';
+import { deleteReceipt, uploadReceipt } from '../utils/receipt';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -21,6 +24,10 @@ interface EditForm {
   occurredOn: string;
   splitType: SplitType;
   payerSharePercent: number;
+  // 새로 고른 영수증 사진(있으면 저장할 때 기존 사진을 교체한다)
+  receiptFile: File | null;
+  // 기존 영수증 사진을 지우기로 했는지
+  removeReceipt: boolean;
 }
 
 export default function TransactionsPage() {
@@ -31,6 +38,8 @@ export default function TransactionsPage() {
   const [household, setHousehold] = useState<HouseholdDetail | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // "더치페이" — 공동 지출 중 고른 건들만 바로 정산 완료로 표시하는 모드.
   const [dutchMode, setDutchMode] = useState(false);
@@ -64,18 +73,35 @@ export default function TransactionsPage() {
       occurredOn: t.occurredOn,
       splitType: t.splitType,
       payerSharePercent: t.payerSharePercent,
+      receiptFile: null,
+      removeReceipt: false,
     });
+    setEditError('');
   }
 
   async function saveEdit(id: number) {
     if (!editForm || !currentId) return;
-    await api.put(`/households/${currentId}/transactions/${id}`, {
-      ...editForm,
-      amount: Number(editForm.amount),
-      categoryId: editForm.categoryId || null,
-    });
-    setEditingId(null);
-    load();
+    const { receiptFile, removeReceipt, ...fields } = editForm;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      await api.put(`/households/${currentId}/transactions/${id}`, {
+        ...fields,
+        amount: Number(fields.amount),
+        categoryId: fields.categoryId || null,
+      });
+      if (receiptFile) {
+        await uploadReceipt(currentId, id, receiptFile);
+      } else if (removeReceipt) {
+        await deleteReceipt(currentId, id);
+      }
+      setEditingId(null);
+      load();
+    } catch (err) {
+      setEditError(getErrorMessage(err, '저장에 실패했습니다.'));
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function handleDelete(id: number) {
@@ -232,8 +258,29 @@ export default function TransactionsPage() {
                       onChange={(next) => setEditForm({ ...editForm, ...next })}
                     />
                   )}
+                  {editForm.type === 'expense' && (
+                    <div className="receipt-edit">
+                      {t.hasReceipt && !editForm.receiptFile && (
+                        <label className="receipt-remove">
+                          <input
+                            type="checkbox"
+                            checked={editForm.removeReceipt}
+                            onChange={(e) => setEditForm({ ...editForm, removeReceipt: e.target.checked })}
+                          />
+                          첨부된 영수증 삭제
+                        </label>
+                      )}
+                      <ReceiptPicker
+                        file={editForm.receiptFile}
+                        onChange={(file) => setEditForm({ ...editForm, receiptFile: file })}
+                        label={t.hasReceipt ? '영수증 사진 교체' : '영수증 사진 첨부'}
+                      />
+                    </div>
+                  )}
+                  {editError && <p className="error">{editError}</p>}
                   <div className="edit-row-actions">
-                    <button type="submit" onClick={() => saveEdit(t.id)}>
+                    <button type="submit" disabled={savingEdit} onClick={() => saveEdit(t.id)}>
+                      {savingEdit && <Spinner size="sm" variant="on-primary" />}
                       저장
                     </button>
                     <button type="button" onClick={() => setEditingId(null)}>
@@ -265,6 +312,7 @@ export default function TransactionsPage() {
                           <span className="split-badge">{splitBadgeLabel(t.splitType, t.payerSharePercent)}</span>
                         )}
                         {t.isSettled && <span className="split-badge settled">정산됨</span>}
+                        {t.hasReceipt && <ReceiptButton transactionId={t.id} />}
                       </p>
                       <p className="muted small">
                         {t.occurredOn} · {t.userName}

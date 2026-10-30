@@ -1,5 +1,6 @@
 import { Transaction } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
+import ReceiptButton from './ReceiptButton';
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
   if (transactions.length === 0) {
@@ -22,6 +23,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                   {t.categoryName || '미분류'}
                   {t.memo ? ` · ${t.memo}` : ''}
                   {badge && <span className="split-badge">{badge}</span>}
+                  {t.hasReceipt && <ReceiptButton transactionId={t.id} />}
                 </p>
                 <p className="muted small">
                   {t.occurredOn} · {t.userName}
