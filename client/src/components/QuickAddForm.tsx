@@ -1,9 +1,10 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
-import { Category, SplitType, TransactionType } from '../types';
+import { Category, ExpenseTemplate, SplitType, TransactionType } from '../types';
 import Spinner from './Spinner';
 import SplitControl from './SplitControl';
 import ReceiptPicker from './ReceiptPicker';
+import TemplateBar from './TemplateBar';
 import { uploadReceipt } from '../utils/receipt';
 
 interface QuickAddFormProps {
@@ -25,6 +26,17 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const loadTemplates = useCallback(async () => {
+    const res = await api.get<{ templates: ExpenseTemplate[] }>(`/households/${householdId}/templates`);
+    setTemplates(res.data.templates);
+  }, [householdId]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
@@ -74,6 +86,34 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
     }
   }
 
+  // 지금 입력한 메모·금액·카테고리·분담 비율을 그대로 템플릿으로 저장한다. 메모가 템플릿 이름이 된다.
+  async function handleSaveTemplate() {
+    setError('');
+    if (!memo.trim() || !amount || Number(amount) <= 0) {
+      setError('템플릿으로 저장하려면 메모(이름)와 금액을 입력해주세요.');
+      return;
+    }
+    if (splitType === 'shared' && (payerSharePercent < 1 || payerSharePercent > 99)) {
+      setError('분담 비율은 1~99 사이로 입력해주세요.');
+      return;
+    }
+    setSavingTemplate(true);
+    try {
+      await api.post(`/households/${householdId}/templates`, {
+        name: memo.trim(),
+        amount: Number(amount),
+        categoryId: categoryId || null,
+        splitType,
+        payerSharePercent,
+      });
+      loadTemplates();
+    } catch (err) {
+      setError(getErrorMessage(err, '템플릿 저장에 실패했습니다.'));
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
   return (
     <form className="quick-add card" onSubmit={handleSubmit}>
       <div className="type-toggle">
@@ -92,6 +132,10 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
           수입
         </button>
       </div>
+
+      {type === 'expense' && (
+        <TemplateBar householdId={householdId} templates={templates} onChanged={loadTemplates} onAdded={onAdded} />
+      )}
 
       <div className="form-row">
         <input
@@ -133,10 +177,17 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
       )}
 
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={submitting}>
-        {submitting && <Spinner size="sm" variant="on-primary" />}
-        {submitting ? '기록 중...' : '기록하기'}
-      </button>
+      <div className="quick-add-actions">
+        {type === 'expense' && (
+          <button type="button" disabled={savingTemplate} onClick={handleSaveTemplate}>
+            ⭐ 템플릿으로 저장
+          </button>
+        )}
+        <button type="submit" disabled={submitting}>
+          {submitting && <Spinner size="sm" variant="on-primary" />}
+          {submitting ? '기록 중...' : '기록하기'}
+        </button>
+      </div>
     </form>
   );
 }

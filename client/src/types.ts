@@ -74,6 +74,18 @@ export interface RecurringRule {
   payerSharePercent: number;
 }
 
+// 자주 쓰는 지출 템플릿. 누르면 name을 메모로 해서 오늘 지출로 바로 기록된다.
+export interface ExpenseTemplate {
+  id: number;
+  name: string;
+  amount: number;
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+  splitType: SplitType;
+  payerSharePercent: number;
+}
+
 export interface Budget {
   categoryId: number;
   categoryName: string;

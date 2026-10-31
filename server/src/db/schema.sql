@@ -100,6 +100,24 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 자주 쓰는 지출 템플릿 (예: "스타벅스 아메리카노 2개"). 빠른 입력에서 한 번 누르면 오늘 날짜로 바로 기록된다.
+-- 가계부 구성원 모두가 같이 쓰고, 누른 사람이 "낸 사람(user_id)"으로 기록된다. 그래서 여기 user_id는
+-- 템플릿을 만든 사람일 뿐 거래의 작성자와는 무관하다. name은 기록될 때 거래의 메모로 그대로 들어간다.
+CREATE TABLE IF NOT EXISTS expense_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  household_id INT NOT NULL,
+  user_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  amount INT NOT NULL,
+  category_id INT NULL,
+  split_type ENUM('shared', 'personal') NOT NULL DEFAULT 'shared',
+  payer_share_percent TINYINT NOT NULL DEFAULT 50,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 카테고리별 월간 예산
 CREATE TABLE IF NOT EXISTS budgets (
   id INT AUTO_INCREMENT PRIMARY KEY,

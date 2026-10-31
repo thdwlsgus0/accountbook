@@ -24,9 +24,11 @@ export default function DashboardPage() {
   const [settlement, setSettlement] = useState<MonthSettlement | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  // silent: 내역 추가 직후처럼 화면을 유지한 채 숫자만 갱신할 때. 전체 로딩 화면으로 바꾸면
+  // 입력 폼이 언마운트되어 "되돌리기" 안내나 에러 메시지가 바로 사라진다.
+  const load = useCallback(async (silent = false) => {
     if (!currentId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const [summaryRes, categoriesRes, transactionsRes, goalsRes, settlementRes] = await Promise.all([
       api.get<MonthSummary>(`/households/${currentId}/summary`, { params: { month } }),
       api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
@@ -83,7 +85,7 @@ export default function DashboardPage() {
 
       <SettlementCard data={settlement} />
 
-      <QuickAddForm householdId={currentId} categories={categories} onAdded={load} />
+      <QuickAddForm householdId={currentId} categories={categories} onAdded={() => load(true)} />
 
       {budgetCategories.length > 0 && (
         <section className="card">

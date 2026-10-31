@@ -12,6 +12,7 @@ import summaryRouter from './routes/summary.js';
 import recurringRouter from './routes/recurring.js';
 import budgetsRouter from './routes/budgets.js';
 import goalsRouter from './routes/goals.js';
+import templatesRouter from './routes/templates.js';
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ app.use('/api/households/:householdId/summary', summaryRouter);
 app.use('/api/households/:householdId/recurring', recurringRouter);
 app.use('/api/households/:householdId/budgets', budgetsRouter);
 app.use('/api/households/:householdId/goals', goalsRouter);
+app.use('/api/households/:householdId/templates', templatesRouter);
 
 // 공통 에러 핸들러. express-async-errors 덕분에 라우트 핸들러의 async 함수 안에서
 // 던진(throw) 에러도 각 라우트에서 try/catch 없이 여기로 모인다.
