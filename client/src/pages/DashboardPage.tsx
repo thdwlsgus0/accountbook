@@ -5,6 +5,7 @@ import QuickAddForm from '../components/QuickAddForm';
 import TransactionList from '../components/TransactionList';
 import BudgetBar from '../components/BudgetBar';
 import SettlementCard from '../components/SettlementCard';
+import UpcomingRecurringBanner from '../components/UpcomingRecurringBanner';
 import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
 import LoadingScreen from '../components/LoadingScreen';
@@ -67,6 +68,8 @@ export default function DashboardPage() {
         <h2>{month}</h2>
         <button onClick={() => shiftMonth(1)}>다음 달</button>
       </div>
+
+      <UpcomingRecurringBanner householdId={currentId} />
 
       <div className="summary-cards">
         <div className="card summary-card income">
