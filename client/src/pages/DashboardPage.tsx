@@ -6,6 +6,7 @@ import TransactionList from '../components/TransactionList';
 import BudgetBar from '../components/BudgetBar';
 import SettlementCard from '../components/SettlementCard';
 import UpcomingRecurringBanner from '../components/UpcomingRecurringBanner';
+import GoalReminderBanner from '../components/GoalReminderBanner';
 import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
 import LoadingScreen from '../components/LoadingScreen';
@@ -70,6 +71,7 @@ export default function DashboardPage() {
       </div>
 
       <UpcomingRecurringBanner householdId={currentId} />
+      <GoalReminderBanner householdId={currentId} goals={goals} />
 
       <div className="summary-cards">
         <div className="card summary-card income">

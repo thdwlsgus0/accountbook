@@ -13,6 +13,8 @@ interface GoalRow extends RowDataPacket {
   targetAmount: number;
   currentAmount: number;
   targetDate: string | null;
+  createdAt: string;
+  lastContributedOn: string | null;
 }
 
 interface GoalBody {
@@ -24,13 +26,18 @@ interface GoalBody {
 interface ContributeBody {
   amount?: number;
   memo?: string | null;
+  // 사용자 기준 오늘(YYYY-MM-DD). DB의 CURDATE()는 UTC라 한국 시간 1일 오전엔 지난달로 찍혀서,
+  // "이번 달 저축했는지" 판단이 틀어지지 않게 클라이언트 날짜를 우선한다.
+  contributedOn?: string;
 }
 
 router.get('/', async (req: Request, res: Response) => {
   const [rows] = await pool.query<GoalRow[]>(
-    `SELECT id, name, target_amount AS targetAmount, current_amount AS currentAmount,
-            target_date AS targetDate
-     FROM savings_goals WHERE household_id = ? ORDER BY created_at DESC`,
+    `SELECT g.id, g.name, g.target_amount AS targetAmount, g.current_amount AS currentAmount,
+            g.target_date AS targetDate, g.created_at AS createdAt,
+            (SELECT MAX(c.contributed_on) FROM savings_goal_contributions c WHERE c.goal_id = g.id)
+              AS lastContributedOn
+     FROM savings_goals g WHERE g.household_id = ? ORDER BY g.created_at DESC`,
     [req.householdId]
   );
   res.json({ goals: rows });
@@ -49,9 +56,12 @@ router.post('/', async (req: Request<{}, {}, GoalBody>, res: Response) => {
 });
 
 router.post('/:id/contribute', async (req: Request<{ id: string }, {}, ContributeBody>, res: Response) => {
-  const { amount, memo } = req.body;
+  const { amount, memo, contributedOn } = req.body;
   if (!amount || amount <= 0) {
     return res.status(400).json({ error: { message: '적립 금액은 0보다 커야 합니다.' } });
+  }
+  if (contributedOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(contributedOn)) {
+    return res.status(400).json({ error: { message: '날짜를 확인해주세요.' } });
   }
 
   const conn = await pool.getConnection();
@@ -68,8 +78,9 @@ router.post('/:id/contribute', async (req: Request<{ id: string }, {}, Contribut
     }
 
     await conn.query(
-      'INSERT INTO savings_goal_contributions (goal_id, user_id, amount, memo, contributed_on) VALUES (?, ?, ?, ?, CURDATE())',
-      [goal.id, req.userId, amount, memo || null]
+      `INSERT INTO savings_goal_contributions (goal_id, user_id, amount, memo, contributed_on)
+       VALUES (?, ?, ?, ?, COALESCE(?, CURDATE()))`,
+      [goal.id, req.userId, amount, memo || null, contributedOn ?? null]
     );
     await conn.query('UPDATE savings_goals SET current_amount = current_amount + ? WHERE id = ?', [
       amount,

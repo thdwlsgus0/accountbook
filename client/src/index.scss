@@ -1512,3 +1512,13 @@ button.receipt-badge {
     font-size: 0.9rem;
   }
 }
+
+// 목표 저축 정체 리마인드 — 고정비 배너와 같은 틀에 색만 수입(초록) 계열로 바꿔 구분한다.
+.goal-reminder {
+  background: var(--color-income-soft);
+  border-color: color-mix(in srgb, var(--color-income) 25%, transparent);
+
+  .upcoming-banner-title {
+    color: var(--color-income);
+  }
+}

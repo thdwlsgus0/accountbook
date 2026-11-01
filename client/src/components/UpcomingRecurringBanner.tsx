@@ -2,29 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { RecurringRule } from '../types';
-import { formatCurrency } from '../utils/format';
-
-function formatLocalDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// 닫은 날짜를 기억해서 같은 날엔 다시 안 띄운다. 시크릿 모드 등에서 localStorage가 막혀 있으면
-// 그냥 매번 보이게 둔다 (알림이 안 뜨는 것보단 낫다).
-function readDismissed(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeDismissed(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // 저장 못 해도 이번 화면에서는 닫힌 상태로 둔다.
-  }
-}
+import { formatCurrency, localDateString } from '../utils/format';
+import { readDismissed, writeDismissed } from '../utils/storage';
 
 // 고정비 결제일 D-1 알림. 내일이 결제일(day_of_month)인 활성 고정비 지출을 대시보드 맨 위에 띄운다.
 // 고정비는 결제일 당일에 자동 기록만 되고 미리 알려주는 게 없어서, 통장 잔고를 챙길 수 있게 하루 전에 알려준다.
@@ -33,7 +12,7 @@ export default function UpcomingRecurringBanner({ householdId }: { householdId: 
   const [rules, setRules] = useState<RecurringRule[]>([]);
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowKey = formatLocalDate(tomorrow);
+  const tomorrowKey = localDateString(tomorrow);
   const storageKey = `upcomingRecurringDismissed:${householdId}`;
   const [dismissed, setDismissed] = useState(() => readDismissed(storageKey) === tomorrowKey);
 

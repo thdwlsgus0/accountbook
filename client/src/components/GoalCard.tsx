@@ -1,7 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { api } from '../api/client';
 import { SavingsGoal } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, localDateString } from '../utils/format';
+import { isGoalStalled, shouldRemindStalledGoals } from '../utils/goals';
 import Spinner from './Spinner';
 
 interface GoalCardProps {
@@ -20,7 +21,10 @@ export default function GoalCard({ goal, householdId, onChange }: GoalCardProps)
     if (!amount || Number(amount) <= 0) return;
     setSubmitting(true);
     try {
-      await api.post(`/households/${householdId}/goals/${goal.id}/contribute`, { amount: Number(amount) });
+      await api.post(`/households/${householdId}/goals/${goal.id}/contribute`, {
+        amount: Number(amount),
+        contributedOn: localDateString(),
+      });
       setAmount('');
       onChange();
     } finally {
@@ -38,6 +42,7 @@ export default function GoalCard({ goal, householdId, onChange }: GoalCardProps)
         {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)} ({percent}%)
       </p>
       {goal.targetDate && <p className="muted small">목표일: {goal.targetDate}</p>}
+      {shouldRemindStalledGoals() && isGoalStalled(goal) && <p className="warning">이번 달 아직 저축 안 하셨어요</p>}
       <form onSubmit={handleContribute} className="inline-form">
         <input type="number" placeholder="적립할 금액" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <button type="submit" disabled={submitting}>

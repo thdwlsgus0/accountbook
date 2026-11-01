@@ -115,6 +115,9 @@ export interface SavingsGoal {
   targetAmount: number;
   currentAmount: number;
   targetDate: string | null;
+  createdAt: string;
+  // 마지막으로 적립한 날짜(YYYY-MM-DD). 한 번도 안 했으면 null. 저축 정체 리마인드에 쓴다.
+  lastContributedOn: string | null;
 }
 
 export interface ApiError {

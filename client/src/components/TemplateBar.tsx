@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { ExpenseTemplate } from '../types';
-import { formatCurrency, splitBadgeLabel } from '../utils/format';
+import { formatCurrency, localDateString, splitBadgeLabel } from '../utils/format';
 
 interface TemplateBarProps {
   householdId: number;
   templates: ExpenseTemplate[];
   onChanged: () => void;
   onAdded: () => void;
-}
-
-// 사용자 시간대 기준 오늘 날짜(YYYY-MM-DD). toISOString은 UTC라서 한국 시간 새벽엔 어제 날짜가 된다.
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const UNDO_MS = 5000;
@@ -34,7 +28,7 @@ export default function TemplateBar({ householdId, templates, onChanged, onAdded
     setPendingId(t.id);
     try {
       const res = await api.post<{ id: number }>(`/households/${householdId}/templates/${t.id}/use`, {
-        occurredOn: localToday(),
+        occurredOn: localDateString(),
       });
       setLastAdded({ transactionId: res.data.id, name: t.name });
       window.clearTimeout(undoTimer.current);

@@ -22,3 +22,8 @@ export function formatCompactCurrency(amount: number): string {
   }
   return new Intl.NumberFormat('ko-KR').format(amount);
 }
+
+// 사용자 기기 시간대 기준 날짜(YYYY-MM-DD). toISOString()은 UTC라서 한국 시간 오전 9시 전엔 하루 전 날짜가 나온다.
+export function localDateString(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
