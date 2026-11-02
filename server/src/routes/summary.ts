@@ -49,6 +49,27 @@ interface MemberPaidRow extends RowDataPacket {
   paid: number;
 }
 
+interface DateMonthlyRow extends RowDataPacket {
+  month: number;
+  total: number;
+  count: number;
+}
+
+interface DateCategoryRow extends RowDataPacket {
+  categoryId: number;
+  categoryName: string;
+  categoryColor: string;
+  total: number;
+}
+
+interface DateTopRow extends RowDataPacket {
+  id: number;
+  occurredOn: string;
+  amount: number;
+  memo: string | null;
+  categoryName: string;
+}
+
 interface SharedExpenseRow extends RowDataPacket {
   userId: number;
   amount: number;
@@ -146,6 +167,74 @@ router.get('/insights', async (req: Request, res: Response) => {
   );
 
   res.json({ month, previousMonth, categories, daily, totals });
+});
+
+// 연간 데이트 비용 통계. 데이트/기념일 카테고리(is_date)로 표시된 카테고리의 지출만 모은다.
+// - monthly: 1~12월 각각의 합계와 건수 (데이트가 없던 달도 0으로 채워서 12개를 항상 내려준다)
+// - categories: 데이트 카테고리별 합계 (데이트 vs 기념일 비중 보기용)
+// - top: 그해 가장 큰 데이트 지출 5건 (기념일 선물 같은 "큰 한 방"을 돌아보는 용도)
+// - previousYearTotal: 작년 같은 기준 합계 (작년 대비 증감)
+router.get('/date-stats', async (req: Request, res: Response) => {
+  await syncRecurringTransactions(req.householdId);
+  const year = Number(req.query.year) || new Date().getFullYear();
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({ error: { message: '연도를 확인해주세요.' } });
+  }
+  const start = `${year}-01-01`;
+  const end = `${year + 1}-01-01`;
+  const previousStart = `${year - 1}-01-01`;
+
+  const [monthlyRows] = await pool.query<DateMonthlyRow[]>(
+    `SELECT MONTH(t.occurred_on) AS month, SUM(t.amount) AS total, COUNT(*) AS count
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id AND c.is_date = TRUE
+     WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+     GROUP BY month`,
+    [req.householdId, start, end]
+  );
+  const monthly = Array.from({ length: 12 }, (_, i) => {
+    const row = monthlyRows.find((r) => Number(r.month) === i + 1);
+    return { month: i + 1, total: Number(row?.total ?? 0), count: Number(row?.count ?? 0) };
+  });
+
+  const [categories] = await pool.query<DateCategoryRow[]>(
+    `SELECT c.id AS categoryId, c.name AS categoryName, c.color AS categoryColor, SUM(t.amount) AS total
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id AND c.is_date = TRUE
+     WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+     GROUP BY c.id, c.name, c.color
+     ORDER BY total DESC`,
+    [req.householdId, start, end]
+  );
+
+  const [top] = await pool.query<DateTopRow[]>(
+    `SELECT t.id, t.occurred_on AS occurredOn, t.amount, t.memo, c.name AS categoryName
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id AND c.is_date = TRUE
+     WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+     ORDER BY t.amount DESC, t.occurred_on DESC
+     LIMIT 5`,
+    [req.householdId, start, end]
+  );
+
+  const [[previous]] = await pool.query<(RowDataPacket & { total: number })[]>(
+    `SELECT COALESCE(SUM(t.amount), 0) AS total
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id AND c.is_date = TRUE
+     WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?`,
+    [req.householdId, previousStart, start]
+  );
+
+  res.json({
+    year,
+    total: monthly.reduce((sum, m) => sum + m.total, 0),
+    count: monthly.reduce((sum, m) => sum + m.count, 0),
+    previousYearTotal: Number(previous.total),
+    monthly,
+    // SUM() 결과가 DECIMAL이라 mysql2가 문자열로 줄 수 있어서 숫자로 확정한다.
+    categories: categories.map((c) => ({ ...c, total: Number(c.total) })),
+    top,
+  });
 });
 
 // 이번 달 "누가 얼마 더 냈는지" 정산.

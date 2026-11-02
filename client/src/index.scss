@@ -1522,3 +1522,169 @@ button.receipt-badge {
     color: var(--color-income);
   }
 }
+
+// 연간 데이트 비용 통계
+.date-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+
+  h4 {
+    margin: 0.4rem 0 0;
+    font-size: 0.9rem;
+  }
+}
+
+.date-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.date-stats-year {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+
+  button {
+    padding: 0.2rem 0.6rem;
+  }
+}
+
+.date-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.8rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+.date-stats-total {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem !important;
+}
+
+.date-stats-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+// 월별 막대: 얇은 막대, 위쪽만 4px 둥글게, 막대 사이 간격, 축/격자는 바닥선 하나만 은은하게.
+.date-chart {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2px;
+  height: 140px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.date-chart-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  outline: none;
+
+  &:hover .date-chart-tooltip,
+  &:focus-visible .date-chart-tooltip {
+    opacity: 1;
+  }
+
+  &:hover .date-chart-bar,
+  &:focus-visible .date-chart-bar {
+    background: var(--color-primary-dark);
+  }
+}
+
+.date-chart-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.date-chart-bar {
+  width: min(70%, 22px);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-primary);
+  transition: background-color 0.15s ease;
+}
+
+.date-chart-label {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  padding-top: 0.2rem;
+  transform: translateY(100%);
+  position: absolute;
+  bottom: 0;
+}
+
+.date-chart-tooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: var(--color-card);
+  font-size: 0.75rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.date-chart-caption {
+  margin: 1.2rem 0 0;
+}
+
+.date-settings-toggle {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  border-style: dashed;
+}
+
+.date-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+
+  > p {
+    flex-basis: 100%;
+    margin: 0;
+  }
+}
+
+.date-settings-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+// 양 끝 달(1~2월, 11~12월)의 툴팁은 가운데 정렬하면 카드 밖으로 삐져나가니 안쪽으로 붙인다.
+.date-chart-col:nth-child(-n + 2) .date-chart-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.date-chart-col:nth-last-child(-n + 2) .date-chart-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}

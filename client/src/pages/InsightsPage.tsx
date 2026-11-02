@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SpendingCalendar from '../components/SpendingCalendar';
+import DateStatsCard from '../components/DateStatsCard';
 import LoadingScreen from '../components/LoadingScreen';
 import { MonthInsights } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -144,6 +145,8 @@ export default function InsightsPage() {
         <h3>날짜별 지출 캘린더</h3>
         <SpendingCalendar month={month} daily={insights.daily} />
       </section>
+
+      {currentId && <DateStatsCard householdId={currentId} />}
     </div>
   );
 }

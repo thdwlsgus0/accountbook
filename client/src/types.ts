@@ -39,6 +39,8 @@ export interface Category {
   name: string;
   type: TransactionType;
   color: string;
+  // 데이트/기념일 카테고리인지. 이 카테고리 지출이 "연간 데이트 비용" 통계에 잡힌다.
+  isDate: boolean;
 }
 
 export interface Transaction {
@@ -174,4 +176,15 @@ export interface MonthInsights {
   categories: CategoryComparison[];
   daily: DailyTotal[];
   totals: TotalsComparison;
+}
+
+// 연간 데이트 비용 통계 (/summary/date-stats)
+export interface DateStats {
+  year: number;
+  total: number;
+  count: number;
+  previousYearTotal: number;
+  monthly: { month: number; total: number; count: number }[];
+  categories: { categoryId: number; categoryName: string; categoryColor: string; total: number }[];
+  top: { id: number; occurredOn: string; amount: number; memo: string | null; categoryName: string }[];
 }

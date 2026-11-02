@@ -37,11 +37,13 @@ interface MemberDetailRow extends RowDataPacket {
 
 // 커플 가계부이므로 기본 카테고리를 미리 채워둔다 — 매번 처음부터 카테고리를
 // 직접 만들지 않아도 바로 기록을 시작할 수 있게 하는 것이 "실용성"의 핵심.
-const DEFAULT_CATEGORIES: Array<{ name: string; type: 'income' | 'expense'; color: string }> = [
+// isDate: 데이트/기념일 카테고리. 이 카테고리 지출이 "연간 데이트 비용" 통계에 들어간다.
+const DEFAULT_CATEGORIES: Array<{ name: string; type: 'income' | 'expense'; color: string; isDate?: boolean }> = [
   { name: '식비', type: 'expense', color: '#f97362' },
   { name: '카페/간식', type: 'expense', color: '#f6b93b' },
   { name: '교통', type: 'expense', color: '#4a90d9' },
-  { name: '데이트', type: 'expense', color: '#e879b9' },
+  { name: '데이트', type: 'expense', color: '#e879b9', isDate: true },
+  { name: '기념일', type: 'expense', color: '#ff6b81', isDate: true },
   { name: '문화/여가', type: 'expense', color: '#9b6bd6' },
   { name: '쇼핑', type: 'expense', color: '#3fb9a8' },
   { name: '주거/통신', type: 'expense', color: '#6b7280' },
@@ -95,11 +97,12 @@ router.post('/', async (req: Request<{}, {}, { name?: string }>, res: Response) 
     ]);
 
     for (const cat of DEFAULT_CATEGORIES) {
-      await conn.query('INSERT INTO categories (household_id, name, type, color) VALUES (?, ?, ?, ?)', [
+      await conn.query('INSERT INTO categories (household_id, name, type, color, is_date) VALUES (?, ?, ?, ?, ?)', [
         householdId,
         cat.name,
         cat.type,
         cat.color,
+        !!cat.isDate,
       ]);
     }
 

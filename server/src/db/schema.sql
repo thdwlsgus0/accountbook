@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS categories (
   name VARCHAR(50) NOT NULL,
   type ENUM('income', 'expense') NOT NULL,
   color VARCHAR(7) NOT NULL DEFAULT '#888888',
+  -- 데이트/기념일 관련 지출 카테고리 표시. TRUE인 카테고리들의 지출이 "연간 데이트 비용" 통계에 잡힌다.
+  -- 기본 카테고리 중 '데이트', '기념일'이 TRUE이고, 여행 등 다른 카테고리도 통계 화면에서 켤 수 있다.
+  is_date BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
