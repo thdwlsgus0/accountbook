@@ -121,6 +121,33 @@ CREATE TABLE IF NOT EXISTS expense_templates (
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- "이거 사도 될까?" — 큰 지출 전에 상대방에게 미리 물어보는 요청/승인 흐름.
+-- status: pending(대기) → approved(승인) / rejected(거절) / cancelled(요청자가 취소)
+--         approved → purchased(요청자가 실제로 사서 지출로 기록함, transaction_id에 그 거래가 연결됨)
+-- 승인/거절은 요청자가 아닌 다른 구성원만 할 수 있다. split_type/payer_share_percent는 구매 기록 시 그대로 쓰인다.
+CREATE TABLE IF NOT EXISTS purchase_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  household_id INT NOT NULL,
+  requester_id INT NOT NULL,
+  title VARCHAR(100) NOT NULL,
+  amount INT NOT NULL,
+  category_id INT NULL,
+  split_type ENUM('shared', 'personal') NOT NULL DEFAULT 'shared',
+  payer_share_percent TINYINT NOT NULL DEFAULT 50,
+  status ENUM('pending', 'approved', 'rejected', 'cancelled', 'purchased') NOT NULL DEFAULT 'pending',
+  responder_id INT NULL,
+  response_note VARCHAR(255) NULL,
+  responded_at DATETIME NULL,
+  transaction_id INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
+  FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (responder_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL,
+  INDEX idx_household_status (household_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 카테고리별 월간 예산
 CREATE TABLE IF NOT EXISTS budgets (
   id INT AUTO_INCREMENT PRIMARY KEY,

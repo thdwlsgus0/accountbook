@@ -11,11 +11,16 @@ interface QuickAddFormProps {
   householdId: number;
   categories: Category[];
   onAdded: () => void;
+  // "사도 될까?" 요청을 보냈을 때 (대시보드의 요청 카드를 새로 고치게 한다)
+  onRequested?: () => void;
 }
+
+// 이 금액 이상인 지출은 기록하기 전에 상대방에게 "사도 될까?"를 물어볼 수 있게 버튼을 띄운다.
+const LARGE_EXPENSE_THRESHOLD = 100000;
 
 // "빠른 입력"이 핵심 요구사항이므로 필드 수를 최소화하고,
 // 금액 입력창에 자동 포커스를 준다.
-export default function QuickAddForm({ householdId, categories, onAdded }: QuickAddFormProps) {
+export default function QuickAddForm({ householdId, categories, onAdded, onRequested }: QuickAddFormProps) {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -28,6 +33,8 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
   const [error, setError] = useState('');
   const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const loadTemplates = useCallback(async () => {
     const res = await api.get<{ templates: ExpenseTemplate[] }>(`/households/${householdId}/templates`);
@@ -47,6 +54,7 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    setNotice('');
     if (!amount || Number(amount) <= 0) {
       setError('금액을 입력해주세요.');
       return;
@@ -114,6 +122,40 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
     }
   }
 
+  // 큰 지출은 바로 기록하는 대신 상대방에게 먼저 물어본다. 승인되면 요청 카드에서 "샀어요!"로 기록한다.
+  async function handleRequest() {
+    setError('');
+    setNotice('');
+    if (!memo.trim()) {
+      setError('무엇을 사려는지 메모에 적어주세요.');
+      return;
+    }
+    if (splitType === 'shared' && (payerSharePercent < 1 || payerSharePercent > 99)) {
+      setError('분담 비율은 1~99 사이로 입력해주세요.');
+      return;
+    }
+    setRequesting(true);
+    try {
+      await api.post(`/households/${householdId}/purchase-requests`, {
+        title: memo.trim(),
+        amount: Number(amount),
+        categoryId: categoryId || null,
+        splitType,
+        payerSharePercent,
+      });
+      setAmount('');
+      setMemo('');
+      setNotice('상대방에게 물어봤어요. 승인되면 위 "사도 될까?" 카드에서 기록할 수 있어요.');
+      onRequested?.();
+    } catch (err) {
+      setError(getErrorMessage(err, '요청에 실패했습니다.'));
+    } finally {
+      setRequesting(false);
+    }
+  }
+
+  const isLargeExpense = type === 'expense' && Number(amount) >= LARGE_EXPENSE_THRESHOLD;
+
   return (
     <form className="quick-add card" onSubmit={handleSubmit}>
       <div className="type-toggle">
@@ -176,11 +218,20 @@ export default function QuickAddForm({ householdId, categories, onAdded }: Quick
         </>
       )}
 
+      {isLargeExpense && (
+        <p className="muted small large-expense-hint">💸 큰 지출이네요. 사기 전에 상대방에게 물어볼 수도 있어요.</p>
+      )}
       {error && <p className="error">{error}</p>}
+      {notice && <p className="notice">{notice}</p>}
       <div className="quick-add-actions">
         {type === 'expense' && (
           <button type="button" disabled={savingTemplate} onClick={handleSaveTemplate}>
             ⭐ 템플릿으로 저장
+          </button>
+        )}
+        {isLargeExpense && (
+          <button type="button" disabled={requesting} onClick={handleRequest}>
+            🙋 사도 될까? 물어보기
           </button>
         )}
         <button type="submit" disabled={submitting}>

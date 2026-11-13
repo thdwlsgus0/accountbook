@@ -7,6 +7,7 @@ import BudgetBar from '../components/BudgetBar';
 import SettlementCard from '../components/SettlementCard';
 import UpcomingRecurringBanner from '../components/UpcomingRecurringBanner';
 import GoalReminderBanner from '../components/GoalReminderBanner';
+import PurchaseRequestsCard from '../components/PurchaseRequestsCard';
 import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
 import LoadingScreen from '../components/LoadingScreen';
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [settlement, setSettlement] = useState<MonthSettlement | null>(null);
   const [loading, setLoading] = useState(true);
+  // QuickAddForm에서 "사도 될까?" 요청을 보내면 올려서 요청 카드가 다시 불러오게 한다.
+  const [requestsKey, setRequestsKey] = useState(0);
 
   // silent: 내역 추가 직후처럼 화면을 유지한 채 숫자만 갱신할 때. 전체 로딩 화면으로 바꾸면
   // 입력 폼이 언마운트되어 "되돌리기" 안내나 에러 메시지가 바로 사라진다.
@@ -90,7 +93,14 @@ export default function DashboardPage() {
 
       <SettlementCard data={settlement} />
 
-      <QuickAddForm householdId={currentId} categories={categories} onAdded={() => load(true)} />
+      <PurchaseRequestsCard householdId={currentId} refreshKey={requestsKey} onPurchased={() => load(true)} />
+
+      <QuickAddForm
+        householdId={currentId}
+        categories={categories}
+        onAdded={() => load(true)}
+        onRequested={() => setRequestsKey((k) => k + 1)}
+      />
 
       {budgetCategories.length > 0 && (
         <section className="card">

@@ -188,3 +188,24 @@ export interface DateStats {
   categories: { categoryId: number; categoryName: string; categoryColor: string; total: number }[];
   top: { id: number; occurredOn: string; amount: number; memo: string | null; categoryName: string }[];
 }
+
+// "이거 사도 될까?" 요청. pending(대기) → approved/rejected, 요청자가 cancelled,
+// 승인 후 실제로 사서 지출로 기록하면 purchased.
+export type PurchaseRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'purchased';
+
+export interface PurchaseRequest {
+  id: number;
+  title: string;
+  amount: number;
+  categoryId: number | null;
+  categoryName: string | null;
+  splitType: SplitType;
+  payerSharePercent: number;
+  status: PurchaseRequestStatus;
+  requesterId: number;
+  requesterName: string;
+  responderName: string | null;
+  responseNote: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+}
