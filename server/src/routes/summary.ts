@@ -168,15 +168,29 @@ router.get('/insights', async (req: Request, res: Response) => {
   );
 
   // 이번 달 지출을 결제수단별로 나눈 합계. 결제수단을 안 고른 지출은 method = null("미지정")로 묶인다.
-  const [paymentRows] = await pool.query<(RowDataPacket & { method: string | null; total: number })[]>(
-    `SELECT payment_method AS method, SUM(amount) AS total
+  // payment_method(ENUM)로 GROUP BY 하면 운영 DB(TiDB)에서 컬럼이 있는데도
+  // "Unknown column 'payment_method' in 'group statement'"로 실패했다. 그래서 GROUP BY 없이
+  // 결제수단마다 조건부 합계를 한 줄로 구하고, 0원인 결제수단은 빼서 큰 순서로 정렬한다.
+  const [[paymentSums]] = await pool.query<
+    (RowDataPacket & { card: number; cash: number; naverpay: number; unspecified: number })[]
+  >(
+    `SELECT
+       COALESCE(SUM(CASE WHEN payment_method = 'card' THEN amount ELSE 0 END), 0) AS card,
+       COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END), 0) AS cash,
+       COALESCE(SUM(CASE WHEN payment_method = 'naverpay' THEN amount ELSE 0 END), 0) AS naverpay,
+       COALESCE(SUM(CASE WHEN payment_method IS NULL THEN amount ELSE 0 END), 0) AS unspecified
      FROM transactions
-     WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?
-     GROUP BY payment_method
-     ORDER BY total DESC`,
+     WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?`,
     [req.householdId, currentStart, currentEnd]
   );
-  const paymentMethods = paymentRows.map((r) => ({ method: r.method, total: Number(r.total) }));
+  const paymentMethods = [
+    { method: 'card', total: Number(paymentSums.card) },
+    { method: 'cash', total: Number(paymentSums.cash) },
+    { method: 'naverpay', total: Number(paymentSums.naverpay) },
+    { method: null, total: Number(paymentSums.unspecified) },
+  ]
+    .filter((p) => p.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   res.json({ month, previousMonth, categories, daily, totals, paymentMethods });
 });
