@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { pool } from './config/db.js';
+import { ensureSchema } from './db/migrate.js';
 import authRouter from './routes/auth.js';
 import householdsRouter from './routes/households.js';
 import categoriesRouter from './routes/categories.js';
@@ -27,6 +28,12 @@ app.set('trust proxy', 1);
 app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json());
 app.use(cookieParser());
+
+// 라우트가 DB를 쓰기 전에, 필요한 테이블/컬럼이 앱의 DB에 있는지 확인하고 없으면 추가한다 (인스턴스당 1회).
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  await ensureSchema();
+  next();
+});
 
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
