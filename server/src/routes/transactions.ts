@@ -6,6 +6,7 @@ import { requireHouseholdMember } from '../middlewares/household.js';
 import { syncRecurringTransactions } from '../utils/recurring.js';
 import { currentYearMonth, monthRange } from '../utils/date.js';
 import { parseSplit, SplitType } from '../utils/split.js';
+import { parsePaymentMethod, PAYMENT_METHOD_LABEL, PaymentMethod } from '../utils/payment.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -25,6 +26,7 @@ interface TransactionRow extends RowDataPacket {
   payerSharePercent: number;
   isSettled: boolean;
   hasReceipt: boolean;
+  paymentMethod: PaymentMethod | null;
 }
 
 interface ReceiptRow extends RowDataPacket {
@@ -46,6 +48,7 @@ interface TransactionBody {
   occurredOn?: string;
   splitType?: string;
   payerSharePercent?: number;
+  paymentMethod?: string | null;
 }
 
 function isValidTransactionBody(body: TransactionBody): body is Required<Pick<TransactionBody, 'type' | 'amount' | 'occurredOn'>> & TransactionBody {
@@ -68,7 +71,7 @@ router.get('/', async (req: Request, res: Response) => {
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
             t.user_id AS userId, u.name AS userName,
             t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
-            t.is_settled AS isSettled,
+            t.is_settled AS isSettled, t.payment_method AS paymentMethod,
             EXISTS(SELECT 1 FROM transaction_receipts r WHERE r.transaction_id = t.id) AS hasReceipt
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
@@ -101,7 +104,7 @@ router.get('/export', async (req: Request, res: Response) => {
             t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
             t.user_id AS userId, u.name AS userName,
             t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
-            t.is_settled AS isSettled
+            t.is_settled AS isSettled, t.payment_method AS paymentMethod
      FROM transactions t
      LEFT JOIN categories c ON c.id = t.category_id
      JOIN users u ON u.id = t.user_id
@@ -111,7 +114,7 @@ router.get('/export', async (req: Request, res: Response) => {
     range ? [req.householdId, range[0], range[1]] : [req.householdId]
   );
 
-  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자', '구분', '낸 사람 부담 비율', '정산 여부'].map(
+  const header = ['날짜', '유형', '카테고리', '금액', '메모', '작성자', '구분', '낸 사람 부담 비율', '정산 여부', '결제수단'].map(
     csvCell
   ).join(',');
   const lines = rows.map((r) =>
@@ -125,6 +128,7 @@ router.get('/export', async (req: Request, res: Response) => {
       r.splitType === 'personal' ? '개인' : '공동',
       r.splitType === 'personal' ? '-' : `${r.payerSharePercent}%`,
       r.splitType === 'personal' ? '-' : r.isSettled ? '완료' : '대기',
+      r.paymentMethod ? PAYMENT_METHOD_LABEL[r.paymentMethod] : '-',
     ]
       .map(csvCell)
       .join(',')
@@ -164,14 +168,32 @@ router.post('/', async (req: Request<{}, {}, TransactionBody>, res: Response) =>
   if (!split.ok) {
     return res.status(400).json({ error: { message: split.message } });
   }
+  const payment = parsePaymentMethod(req.body.paymentMethod);
+  if (!payment.ok) {
+    return res.status(400).json({ error: { message: payment.message } });
+  }
   const { type, amount, categoryId, memo, occurredOn } = req.body;
   const { splitType, payerSharePercent } = split.value;
+  // 결제수단은 지출에만 의미가 있다.
+  const paymentMethod = type === 'expense' ? payment.value : null;
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO transactions
-       (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.householdId, req.userId, categoryId || null, type, amount, memo || null, occurredOn, splitType, payerSharePercent]
+       (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent,
+        payment_method)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      req.householdId,
+      req.userId,
+      categoryId || null,
+      type,
+      amount,
+      memo || null,
+      occurredOn,
+      splitType,
+      payerSharePercent,
+      paymentMethod,
+    ]
   );
   res.status(201).json({ id: result.insertId });
 });
@@ -184,14 +206,31 @@ router.put('/:id', async (req: Request<{ id: string }, {}, TransactionBody>, res
   if (!split.ok) {
     return res.status(400).json({ error: { message: split.message } });
   }
+  const payment = parsePaymentMethod(req.body.paymentMethod);
+  if (!payment.ok) {
+    return res.status(400).json({ error: { message: payment.message } });
+  }
   const { type, amount, categoryId, memo, occurredOn } = req.body;
   const { splitType, payerSharePercent } = split.value;
+  const paymentMethod = type === 'expense' ? payment.value : null;
 
   const [result] = await pool.query<ResultSetHeader>(
     `UPDATE transactions
-     SET type = ?, amount = ?, category_id = ?, memo = ?, occurred_on = ?, split_type = ?, payer_share_percent = ?
+     SET type = ?, amount = ?, category_id = ?, memo = ?, occurred_on = ?, split_type = ?, payer_share_percent = ?,
+         payment_method = ?
      WHERE id = ? AND household_id = ?`,
-    [type, amount, categoryId || null, memo || null, occurredOn, splitType, payerSharePercent, req.params.id, req.householdId]
+    [
+      type,
+      amount,
+      categoryId || null,
+      memo || null,
+      occurredOn,
+      splitType,
+      payerSharePercent,
+      paymentMethod,
+      req.params.id,
+      req.householdId,
+    ]
   );
   if (result.affectedRows === 0) {
     return res.status(404).json({ error: { message: '거래 내역을 찾을 수 없습니다.' } });

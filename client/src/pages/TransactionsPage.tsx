@@ -4,8 +4,10 @@ import { useHousehold } from '../context/HouseholdContext';
 import SplitControl from '../components/SplitControl';
 import ReceiptButton from '../components/ReceiptButton';
 import ReceiptPicker from '../components/ReceiptPicker';
+import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import { paymentMethodLabel } from '../utils/payment';
 import Spinner from '../components/Spinner';
-import { Category, HouseholdDetail, SplitType, Transaction, TransactionType } from '../types';
+import { Category, HouseholdDetail, PaymentMethod, SplitType, Transaction, TransactionType } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import { triggerDownload } from '../utils/download';
 import { computeBalances, computeTransfers } from '../utils/settlement';
@@ -25,6 +27,7 @@ interface EditForm {
   occurredOn: string;
   splitType: SplitType;
   payerSharePercent: number;
+  paymentMethod: PaymentMethod | null;
   // 새로 고른 영수증 사진(있으면 저장할 때 기존 사진을 교체한다)
   receiptFile: File | null;
   // 기존 영수증 사진을 지우기로 했는지
@@ -74,6 +77,7 @@ export default function TransactionsPage() {
       occurredOn: t.occurredOn,
       splitType: t.splitType,
       payerSharePercent: t.payerSharePercent,
+      paymentMethod: t.paymentMethod,
       receiptFile: null,
       removeReceipt: false,
     });
@@ -251,6 +255,13 @@ export default function TransactionsPage() {
                     />
                   </div>
                   {editForm.type === 'expense' && (
+                    <PaymentMethodPicker
+                      value={editForm.paymentMethod}
+                      onChange={(m) => setEditForm({ ...editForm, paymentMethod: m })}
+                      allowClear
+                    />
+                  )}
+                  {editForm.type === 'expense' && (
                     <SplitControl
                       splitType={editForm.splitType}
                       payerSharePercent={editForm.payerSharePercent}
@@ -315,6 +326,7 @@ export default function TransactionsPage() {
                       </p>
                       <p className="muted small">
                         {t.occurredOn} · {t.userName}
+                        {t.type === 'expense' && t.paymentMethod && ` · ${paymentMethodLabel(t.paymentMethod)}`}
                       </p>
                     </div>
                   </div>

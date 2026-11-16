@@ -1,5 +1,6 @@
-// 대시보드 알림 배너를 "닫은 시점"(날짜나 달)을 기억해서 같은 기간엔 다시 안 띄우는 데 쓴다.
-// 시크릿 모드 등에서 localStorage가 막혀 있으면 그냥 매번 보이게 둔다 (알림이 안 뜨는 것보단 낫다).
+// localStorage 읽기/쓰기를 안전하게 감싼 것. 대시보드 알림 배너를 "닫은 시점"(날짜나 달)을 기억하거나,
+// 마지막으로 쓴 결제수단을 기억하는 데 쓴다. 시크릿 모드 등에서 localStorage가 막혀 있으면
+// 그냥 기억 못 한 것처럼 동작한다 (알림이 안 뜨는 것보단 매번 뜨는 게 낫다).
 export function readDismissed(key: string): string | null {
   try {
     return localStorage.getItem(key);

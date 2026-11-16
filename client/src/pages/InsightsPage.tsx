@@ -6,6 +6,7 @@ import DateStatsCard from '../components/DateStatsCard';
 import LoadingScreen from '../components/LoadingScreen';
 import { MonthInsights } from '../types';
 import { formatCurrency } from '../utils/format';
+import { PAYMENT_METHODS, paymentMethodLabel } from '../utils/payment';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -33,6 +34,8 @@ export default function InsightsPage() {
   if (loading || !insights) {
     return <LoadingScreen />;
   }
+
+  const paymentTotal = insights.paymentMethods.reduce((sum, p) => sum + p.total, 0);
 
   // categories는 서버에서 이미 current 내림차순으로 내려오므로 앞 3개가 곧 Top3.
   const top3 = insights.categories.filter((c) => c.current > 0).slice(0, 3);
@@ -106,6 +109,35 @@ export default function InsightsPage() {
                 <span className="amount expense">{formatCurrency(c.current)}</span>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card">
+        <h3>결제수단별 지출</h3>
+        {paymentTotal === 0 ? (
+          <p className="muted">이번 달 지출 내역이 없습니다.</p>
+        ) : (
+          <ul className="payment-breakdown">
+            {insights.paymentMethods.map((p) => {
+              const percent = Math.round((p.total / paymentTotal) * 100);
+              const icon = PAYMENT_METHODS.find((m) => m.value === p.method)?.icon ?? '❔';
+              return (
+                <li key={p.method ?? 'none'} className="payment-breakdown-item">
+                  <div className="payment-breakdown-row">
+                    <span>
+                      {icon} {paymentMethodLabel(p.method)}
+                    </span>
+                    <span className="muted small">
+                      {formatCurrency(p.total)} ({percent}%)
+                    </span>
+                  </div>
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${percent}%` }} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

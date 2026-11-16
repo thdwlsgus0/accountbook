@@ -4,6 +4,7 @@ import { pool } from '../config/db.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { requireHouseholdMember } from '../middlewares/household.js';
 import { parseSplit, SplitType } from '../utils/split.js';
+import { parsePaymentMethod, PaymentMethod } from '../utils/payment.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -17,6 +18,7 @@ interface TemplateRow extends RowDataPacket {
   categoryColor: string | null;
   splitType: SplitType;
   payerSharePercent: number;
+  paymentMethod: PaymentMethod | null;
 }
 
 interface TemplateBody {
@@ -25,13 +27,15 @@ interface TemplateBody {
   categoryId?: number | null;
   splitType?: string;
   payerSharePercent?: number;
+  paymentMethod?: string | null;
 }
 
 router.get('/', async (req: Request, res: Response) => {
   const [rows] = await pool.query<TemplateRow[]>(
     `SELECT t.id, t.name, t.amount, t.category_id AS categoryId,
             c.name AS categoryName, c.color AS categoryColor,
-            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
+            t.payment_method AS paymentMethod
      FROM expense_templates t
      LEFT JOIN categories c ON c.id = t.category_id
      WHERE t.household_id = ?
@@ -51,11 +55,15 @@ router.post('/', async (req: Request<{}, {}, TemplateBody>, res: Response) => {
   if (!split.ok) {
     return res.status(400).json({ error: { message: split.message } });
   }
+  const payment = parsePaymentMethod(req.body.paymentMethod);
+  if (!payment.ok) {
+    return res.status(400).json({ error: { message: payment.message } });
+  }
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO expense_templates
-       (household_id, user_id, name, amount, category_id, split_type, payer_share_percent)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (household_id, user_id, name, amount, category_id, split_type, payer_share_percent, payment_method)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       req.householdId,
       req.userId,
@@ -64,6 +72,7 @@ router.post('/', async (req: Request<{}, {}, TemplateBody>, res: Response) => {
       categoryId || null,
       split.value.splitType,
       split.value.payerSharePercent,
+      payment.value,
     ]
   );
   res.status(201).json({ id: result.insertId });
@@ -79,7 +88,8 @@ router.post('/:id/use', async (req: Request<{ id: string }, {}, { occurredOn?: s
 
   const [rows] = await pool.query<TemplateRow[]>(
     `SELECT name, amount, category_id AS categoryId,
-            split_type AS splitType, payer_share_percent AS payerSharePercent
+            split_type AS splitType, payer_share_percent AS payerSharePercent,
+            payment_method AS paymentMethod
      FROM expense_templates
      WHERE id = ? AND household_id = ?`,
     [req.params.id, req.householdId]
@@ -91,9 +101,20 @@ router.post('/:id/use', async (req: Request<{ id: string }, {}, { occurredOn?: s
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO transactions
-       (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent)
-     VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?)`,
-    [req.householdId, req.userId, t.categoryId, t.amount, t.name, occurredOn, t.splitType, t.payerSharePercent]
+       (household_id, user_id, category_id, type, amount, memo, occurred_on, split_type, payer_share_percent,
+        payment_method)
+     VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, ?)`,
+    [
+      req.householdId,
+      req.userId,
+      t.categoryId,
+      t.amount,
+      t.name,
+      occurredOn,
+      t.splitType,
+      t.payerSharePercent,
+      t.paymentMethod,
+    ]
   );
   res.status(201).json({ id: result.insertId });
 });

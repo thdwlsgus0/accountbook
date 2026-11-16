@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { ExpenseTemplate } from '../types';
 import { formatCurrency, localDateString, splitBadgeLabel } from '../utils/format';
+import { paymentMethodLabel } from '../utils/payment';
 
 interface TemplateBarProps {
   householdId: number;
@@ -81,6 +82,7 @@ export default function TemplateBar({ householdId, templates, onChanged, onAdded
                 <span className="template-chip-amount">
                   {formatCurrency(t.amount)}
                   {badge && ` · ${badge}`}
+                  {t.paymentMethod && ` · ${paymentMethodLabel(t.paymentMethod)}`}
                 </span>
               </button>
               {editing && (

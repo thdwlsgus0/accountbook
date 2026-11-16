@@ -10,6 +10,9 @@ export interface User {
 
 export type TransactionType = 'income' | 'expense';
 
+// 지출 결제수단. 수입이나 예전 내역처럼 고르지 않은 건 null("미지정").
+export type PaymentMethod = 'card' | 'cash' | 'naverpay';
+
 // 'shared'(공동 지출, 둘이 나눠 부담) / 'personal'(내 개인 지출, 정산 대상 제외)
 export type SplitType = 'shared' | 'personal';
 
@@ -61,6 +64,7 @@ export interface Transaction {
   isSettled: boolean;
   // 영수증 사진이 첨부돼 있는지. 사진 자체는 목록에 안 실리고, 볼 때 따로 받아온다.
   hasReceipt: boolean;
+  paymentMethod: PaymentMethod | null;
 }
 
 export interface RecurringRule {
@@ -86,6 +90,7 @@ export interface ExpenseTemplate {
   categoryColor: string | null;
   splitType: SplitType;
   payerSharePercent: number;
+  paymentMethod: PaymentMethod | null;
 }
 
 export interface Budget {
@@ -179,6 +184,8 @@ export interface MonthInsights {
   categories: CategoryComparison[];
   daily: DailyTotal[];
   totals: TotalsComparison;
+  // 이번 달 지출의 결제수단별 합계 (method가 null이면 미지정)
+  paymentMethods: { method: PaymentMethod | null; total: number }[];
 }
 
 // 연간 데이트 비용 통계 (/summary/date-stats)

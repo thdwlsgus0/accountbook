@@ -1,6 +1,7 @@
 import { Transaction } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import ReceiptButton from './ReceiptButton';
+import { paymentMethodLabel } from '../utils/payment';
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
   if (transactions.length === 0) {
@@ -27,6 +28,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                 </p>
                 <p className="muted small">
                   {t.occurredOn} · {t.userName}
+                  {t.type === 'expense' && t.paymentMethod && ` · ${paymentMethodLabel(t.paymentMethod)}`}
                 </p>
               </div>
             </div>

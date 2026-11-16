@@ -1834,3 +1834,32 @@ button.receipt-badge {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
 }
+
+// 결제수단 (카드/현금/네이버페이)
+.payment-picker {
+  align-self: flex-start;
+  flex-wrap: wrap;
+
+  button.active.payment {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.payment-breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.payment-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}

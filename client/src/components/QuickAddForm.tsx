@@ -1,10 +1,12 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
-import { Category, ExpenseTemplate, SplitType, TransactionType } from '../types';
+import { Category, ExpenseTemplate, PaymentMethod, SplitType, TransactionType } from '../types';
 import Spinner from './Spinner';
 import SplitControl from './SplitControl';
 import ReceiptPicker from './ReceiptPicker';
 import TemplateBar from './TemplateBar';
+import PaymentMethodPicker from './PaymentMethodPicker';
+import { readLastPaymentMethod, writeLastPaymentMethod } from '../utils/payment';
 import { uploadReceipt } from '../utils/receipt';
 
 interface QuickAddFormProps {
@@ -28,6 +30,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
   const [occurredOn, setOccurredOn] = useState(() => new Date().toISOString().slice(0, 10));
   const [splitType, setSplitType] = useState<SplitType>('shared');
   const [payerSharePercent, setPayerSharePercent] = useState(50);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(readLastPaymentMethod);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -74,7 +77,9 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
         // 수입은 나눠 부담할 일이 없으니 그냥 공동/100%로 둔다 (서버도 이 값을 신경 안 씀).
         splitType: type === 'expense' ? splitType : 'shared',
         payerSharePercent: type === 'expense' ? payerSharePercent : 50,
+        paymentMethod: type === 'expense' ? paymentMethod : null,
       });
+      if (type === 'expense') writeLastPaymentMethod(paymentMethod);
       setAmount('');
       setMemo('');
       if (type === 'expense' && receiptFile) {
@@ -113,6 +118,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
         categoryId: categoryId || null,
         splitType,
         payerSharePercent,
+        paymentMethod,
       });
       loadTemplates();
     } catch (err) {
@@ -206,6 +212,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
 
       {type === 'expense' && (
         <>
+          <PaymentMethodPicker value={paymentMethod} onChange={(m) => m && setPaymentMethod(m)} />
           <SplitControl
             splitType={splitType}
             payerSharePercent={payerSharePercent}

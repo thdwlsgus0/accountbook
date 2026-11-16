@@ -167,7 +167,18 @@ router.get('/insights', async (req: Request, res: Response) => {
     [currentStart, currentStart, currentStart, currentStart, req.householdId, previousStart, currentEnd]
   );
 
-  res.json({ month, previousMonth, categories, daily, totals });
+  // 이번 달 지출을 결제수단별로 나눈 합계. 결제수단을 안 고른 지출은 method = null("미지정")로 묶인다.
+  const [paymentRows] = await pool.query<(RowDataPacket & { method: string | null; total: number })[]>(
+    `SELECT payment_method AS method, SUM(amount) AS total
+     FROM transactions
+     WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?
+     GROUP BY payment_method
+     ORDER BY total DESC`,
+    [req.householdId, currentStart, currentEnd]
+  );
+  const paymentMethods = paymentRows.map((r) => ({ method: r.method, total: Number(r.total) }));
+
+  res.json({ month, previousMonth, categories, daily, totals, paymentMethods });
 });
 
 // 연간 데이트 비용 통계. 데이트/기념일 카테고리(is_date)로 표시된 카테고리의 지출만 모은다.
