@@ -153,6 +153,8 @@ export interface MemberPaid {
   userId: number;
   userName: string;
   paid: number;
+  // 정산 기준 받을 돈(+) / 보낼 돈(-). 구성원 전체 합은 항상 0.
+  balance: number;
 }
 
 export interface Settlement {
@@ -167,7 +169,8 @@ export interface MonthSettlement {
   month: string;
   members: MemberPaid[];
   totalExpense: number;
-  settlement: Settlement | null;
+  // "누가 누구에게 얼마" 송금 목록. 비어 있으면 이미 딱 맞게 정산된 상태. 최대 (인원 - 1)건.
+  settlements: Settlement[];
 }
 
 export interface MonthInsights {

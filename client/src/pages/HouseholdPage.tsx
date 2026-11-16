@@ -21,7 +21,7 @@ export default function HouseholdPage() {
       <div className="card">
         <p className="muted small">초대 코드</p>
         <p className="invite-code">{detail.inviteCode}</p>
-        <p className="muted small">파트너에게 이 코드를 공유해서 같이 사용하세요. (최대 2인)</p>
+        <p className="muted small">같이 쓸 사람에게 이 코드를 공유하세요. (최대 6명)</p>
       </div>
       <div className="card">
         <h3>구성원</h3>

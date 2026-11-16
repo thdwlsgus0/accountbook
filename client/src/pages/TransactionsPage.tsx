@@ -8,7 +8,8 @@ import Spinner from '../components/Spinner';
 import { Category, HouseholdDetail, SplitType, Transaction, TransactionType } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import { triggerDownload } from '../utils/download';
-import { computeSettlement } from '../utils/settlement';
+import { computeBalances, computeTransfers } from '../utils/settlement';
+import SettlementTransfers from '../components/SettlementTransfers';
 import { deleteReceipt, uploadReceipt } from '../utils/receipt';
 
 function currentYearMonth(): string {
@@ -144,8 +145,15 @@ export default function TransactionsPage() {
   const selectedTransactions = transactions.filter((t) => selectedIds.has(t.id));
   const selectedTotal = selectedTransactions.reduce((sum, t) => sum + t.amount, 0);
   const members = household?.members ?? [];
+  const nameOf = (id: number) => members.find((m) => m.id === id)?.name ?? '';
   const settlementPreview =
-    members.length === 2 ? computeSettlement(selectedTransactions, [members[0].id, members[1].id]) : null;
+    members.length >= 2
+      ? computeTransfers(computeBalances(selectedTransactions, members.map((m) => m.id))).map((t) => ({
+          fromUserName: nameOf(t.fromUserId),
+          toUserName: nameOf(t.toUserId),
+          amount: t.amount,
+        }))
+      : [];
 
   async function handleSettle() {
     if (!currentId || selectedIds.size === 0) return;
@@ -176,7 +184,7 @@ export default function TransactionsPage() {
         <button type="button" onClick={() => handleExport('all')}>
           전체 내역 백업(CSV)
         </button>
-        {members.length === 2 && (
+        {members.length >= 2 && (
           <button type="button" className={dutchMode ? 'active' : ''} onClick={toggleDutchMode}>
             {dutchMode ? '더치페이 종료' : '더치페이'}
           </button>
@@ -193,16 +201,7 @@ export default function TransactionsPage() {
               {selectedIds.size}건 선택 · 합계 {formatCurrency(selectedTotal)}
             </p>
           )}
-          {selectedIds.size > 0 &&
-            (settlementPreview ? (
-              <p className="settlement-result">
-                <strong>{members.find((m) => m.id === settlementPreview.fromUserId)?.name}</strong>님이{' '}
-                <strong>{members.find((m) => m.id === settlementPreview.toUserId)?.name}</strong>님에게{' '}
-                <strong>{formatCurrency(settlementPreview.amount)}</strong> 보내면 정산 끝!
-              </p>
-            ) : (
-              <p className="settlement-result settled">이미 딱 맞게 냈어요! 🎉</p>
-            ))}
+          {selectedIds.size > 0 && <SettlementTransfers transfers={settlementPreview} />}
           {settleError && <p className="error">{settleError}</p>}
           <button type="submit" disabled={selectedIds.size === 0 || settling} onClick={handleSettle}>
             {settling && <Spinner size="sm" variant="on-primary" />}

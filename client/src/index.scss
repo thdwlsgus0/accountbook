@@ -1798,3 +1798,39 @@ button.receipt-badge {
     color: var(--color-primary);
   }
 }
+
+// N명 정산: 구성원별 받을/보낼 돈 + 여러 줄 송금 목록
+.settlement-member {
+  flex-wrap: wrap;
+}
+
+.settlement-balance {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+
+  &.receive {
+    background: var(--color-income-soft);
+    color: var(--color-income);
+  }
+
+  &.send {
+    background: var(--color-expense-soft);
+    color: var(--color-expense);
+  }
+}
+
+.settlement-transfers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settlement-transfers-footer {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}

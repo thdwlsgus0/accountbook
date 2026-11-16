@@ -56,6 +56,10 @@ const DEFAULT_CATEGORIES: Array<{ name: string; type: 'income' | 'expense'; colo
   { name: '기타수입', type: 'income', color: '#495057' },
 ];
 
+// 가계부 최대 인원. 커플(2인)에서 시작했지만 가족/룸메이트도 쓸 수 있게 늘렸다.
+// 정산은 N명 기준으로 계산된다 (utils/settlement.ts).
+const MAX_MEMBERS = 6;
+
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 헷갈리는 0/O, 1/I 제외
   let code = '';
@@ -142,8 +146,10 @@ router.post('/join', async (req: Request<{}, {}, { inviteCode?: string }>, res: 
     'SELECT COUNT(*) AS count FROM household_members WHERE household_id = ?',
     [household.id]
   );
-  if (count >= 2) {
-    return res.status(409).json({ error: { message: '이 가계부는 이미 인원이 가득 찼습니다. (최대 2인)' } });
+  if (Number(count) >= MAX_MEMBERS) {
+    return res
+      .status(409)
+      .json({ error: { message: `이 가계부는 이미 인원이 가득 찼습니다. (최대 ${MAX_MEMBERS}명)` } });
   }
 
   await pool.query('INSERT INTO household_members (household_id, user_id, role) VALUES (?, ?, ?)', [
