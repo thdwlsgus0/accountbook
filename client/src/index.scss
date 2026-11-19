@@ -1863,3 +1863,70 @@ button.receipt-badge {
   margin-bottom: 0.3rem;
   font-weight: 600;
 }
+
+// 카드 문자 붙여넣기
+.sms-toggle {
+  align-self: flex-start;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  border-style: dashed;
+}
+
+.sms-paste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-card);
+    color: var(--color-text);
+    font: 0.82rem/1.5 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.sms-paste-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary-dark);
+}
+
+.sms-close {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1.05rem;
+}
+
+.sms-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+
+  span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--color-card);
+    color: var(--color-primary-dark);
+  }
+}

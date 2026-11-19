@@ -6,6 +6,8 @@ import SplitControl from './SplitControl';
 import ReceiptPicker from './ReceiptPicker';
 import TemplateBar from './TemplateBar';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import SmsPasteBox from './SmsPasteBox';
+import { guessCategoryId, ParsedSms } from '../utils/smsParser';
 import { readLastPaymentMethod, writeLastPaymentMethod } from '../utils/payment';
 import { uploadReceipt } from '../utils/receipt';
 
@@ -38,6 +40,8 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [notice, setNotice] = useState('');
+  // 기록하고 나면 올려서 문자 붙여넣기 칸을 새로 그린다(붙여넣은 문자와 결과 지우기).
+  const [smsKey, setSmsKey] = useState(0);
 
   const loadTemplates = useCallback(async () => {
     const res = await api.get<{ templates: ExpenseTemplate[] }>(`/households/${householdId}/templates`);
@@ -91,12 +95,23 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
         }
       }
       setReceiptFile(null);
+      setSmsKey((k) => k + 1);
       onAdded();
     } catch (err) {
       setError(getErrorMessage(err, '기록에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // 카드 문자에서 읽은 항목만 입력칸에 채운다. 못 읽은 항목은 사용자가 이미 적어둔 값을 그대로 둔다.
+  function applySms(r: ParsedSms) {
+    if (r.amount != null) setAmount(String(r.amount));
+    if (r.merchant) setMemo(r.merchant);
+    if (r.occurredOn) setOccurredOn(r.occurredOn);
+    if (r.paymentMethod) setPaymentMethod(r.paymentMethod);
+    const guessed = r.merchant ? guessCategoryId(r.merchant, filteredCategories) : null;
+    if (guessed) setCategoryId(String(guessed));
   }
 
   // 지금 입력한 메모·금액·카테고리·분담 비율을 그대로 템플릿으로 저장한다. 메모가 템플릿 이름이 된다.
@@ -180,6 +195,8 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
           수입
         </button>
       </div>
+
+      {type === 'expense' && <SmsPasteBox key={smsKey} onParsed={applySms} />}
 
       {type === 'expense' && (
         <TemplateBar householdId={householdId} templates={templates} onChanged={loadTemplates} onAdded={onAdded} />
