@@ -142,6 +142,30 @@ router.get('/export', async (req: Request, res: Response) => {
   res.send(csv);
 });
 
+// 카테고리 자동 추천용: 최근 1년 동안 "이 메모엔 이 카테고리를 몇 번 골랐는지".
+// 글자를 칠 때마다 서버를 부르지 않도록 목록을 한 번에 내려주고, 추천 계산은 프론트에서 한다.
+// 자주 쓴 조합 500개면 가계부 하나엔 충분하다.
+interface MemoCategoryRow extends RowDataPacket {
+  memo: string;
+  type: 'income' | 'expense';
+  categoryId: number;
+  count: number;
+}
+
+router.get('/memo-categories', async (req: Request, res: Response) => {
+  const [rows] = await pool.query<MemoCategoryRow[]>(
+    `SELECT memo, type, category_id AS categoryId, COUNT(*) AS count
+     FROM transactions
+     WHERE household_id = ? AND memo IS NOT NULL AND memo <> '' AND category_id IS NOT NULL
+       AND occurred_on >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+     GROUP BY memo, type, category_id
+     ORDER BY count DESC
+     LIMIT 500`,
+    [req.householdId]
+  );
+  res.json({ memoCategories: rows.map((r) => ({ ...r, count: Number(r.count) })) });
+});
+
 // "더치페이" — 고른 공동 지출 건들을 그 자리에서 정산 완료로 표시한다.
 // 정산 완료된 건은 월간 정산(/summary/settlement) 계산에서 빠진다(이미 처리된 거니까).
 // 개인 지출(personal)은 정산 개념이 없으니 WHERE에서 자연스럽게 걸러지고 조용히 무시된다.

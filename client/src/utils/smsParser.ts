@@ -99,29 +99,3 @@ export function parseSms(raw: string, now: Date = new Date()): ParsedSms {
     isCancel: /취소/.test(text),
   };
 }
-
-// 가게 이름으로 카테고리를 짐작한다. 가계부마다 카테고리 이름이 다를 수 있어서,
-// 기본 카테고리 이름(예: '카페/간식')을 찾고, 없으면 이름에 키워드가 들어간 카테고리를 찾는다.
-const CATEGORY_HINTS: Array<{ pattern: RegExp; names: string[] }> = [
-  { pattern: /스타벅스|커피|카페|투썸|메가MGC|메가커피|이디야|빽다방|폴바셋|할리스|파스쿠찌|베이커리|파리바게뜨|뚜레쥬르|배스킨|던킨/i, names: ['카페/간식', '카페', '간식'] },
-  { pattern: /배달의민족|배민|요기요|쿠팡이츠|식당|김밥|치킨|피자|버거|맥도날드|롯데리아|버거킹|아웃백|국밥|분식|고기|초밥|마라/, names: ['식비', '외식'] },
-  { pattern: /이마트|홈플러스|롯데마트|코스트코|GS25|CU|세븐일레븐|이마트24|마트|편의점/, names: ['식비', '생활'] },
-  { pattern: /쿠팡|무신사|올리브영|다이소|11번가|G마켓|지마켓|SSG|오늘의집|29CM|에이블리|지그재그/, names: ['쇼핑'] },
-  { pattern: /택시|카카오T|티머니|지하철|버스|코레일|KTX|SRT|주유|GS칼텍스|SK에너지|S-OIL|주차/, names: ['교통'] },
-  { pattern: /CGV|메가박스|롯데시네마|넷플릭스|유튜브|멜론|노래방|볼링|PC방/, names: ['문화/여가', '여가'] },
-  { pattern: /병원|의원|약국|치과|한의원/, names: ['의료/건강', '의료'] },
-  { pattern: /SKT|KT|LG U\+|LGU\+|통신|관리비|전기|가스|수도/, names: ['주거/통신', '통신'] },
-];
-
-export function guessCategoryId(merchant: string, categories: { id: number; name: string }[]): number | null {
-  for (const hint of CATEGORY_HINTS) {
-    if (!hint.pattern.test(merchant)) continue;
-    for (const name of hint.names) {
-      const exact = categories.find((c) => c.name === name);
-      if (exact) return exact.id;
-    }
-    const partial = categories.find((c) => hint.names.some((n) => c.name.includes(n.split('/')[0])));
-    if (partial) return partial.id;
-  }
-  return null;
-}

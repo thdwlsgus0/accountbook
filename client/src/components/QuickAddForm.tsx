@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
 import { Category, ExpenseTemplate, PaymentMethod, SplitType, TransactionType } from '../types';
 import Spinner from './Spinner';
@@ -7,7 +7,8 @@ import ReceiptPicker from './ReceiptPicker';
 import TemplateBar from './TemplateBar';
 import PaymentMethodPicker from './PaymentMethodPicker';
 import SmsPasteBox from './SmsPasteBox';
-import { guessCategoryId, ParsedSms } from '../utils/smsParser';
+import { ParsedSms } from '../utils/smsParser';
+import { MemoCategory, suggestCategories } from '../utils/categorySuggest';
 import { readLastPaymentMethod, writeLastPaymentMethod } from '../utils/payment';
 import { uploadReceipt } from '../utils/receipt';
 
@@ -28,6 +29,9 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  // 사용자가 카테고리를 직접 골랐는지. 직접 고르기 전까지는 메모에 맞춰 추천 1순위를 자동으로 골라둔다.
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [memoHistory, setMemoHistory] = useState<MemoCategory[]>([]);
   const [memo, setMemo] = useState('');
   const [occurredOn, setOccurredOn] = useState(() => new Date().toISOString().slice(0, 10));
   const [splitType, setSplitType] = useState<SplitType>('shared');
@@ -52,11 +56,34 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
     loadTemplates();
   }, [loadTemplates]);
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const loadMemoHistory = useCallback(async () => {
+    const res = await api.get<{ memoCategories: MemoCategory[] }>(
+      `/households/${householdId}/transactions/memo-categories`
+    );
+    setMemoHistory(res.data.memoCategories);
+  }, [householdId]);
+
+  useEffect(() => {
+    // 추천은 있으면 좋은 기능이라, 불러오기에 실패해도 입력은 그대로 되게 조용히 넘긴다.
+    loadMemoHistory().catch(() => setMemoHistory([]));
+  }, [loadMemoHistory]);
+
+  const filteredCategories = useMemo(() => categories.filter((c) => c.type === type), [categories, type]);
+  const suggestions = useMemo(
+    () => suggestCategories(memo, type, memoHistory, filteredCategories),
+    [memo, type, memoHistory, filteredCategories]
+  );
 
   useEffect(() => {
     setCategoryId('');
+    setCategoryTouched(false);
   }, [type]);
+
+  // 직접 고르기 전에는 메모가 바뀔 때마다 추천 1순위로 맞춰둔다 (추천이 없으면 비움).
+  useEffect(() => {
+    if (categoryTouched) return;
+    setCategoryId(suggestions[0] ? String(suggestions[0].categoryId) : '');
+  }, [suggestions, categoryTouched]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -86,6 +113,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
       if (type === 'expense') writeLastPaymentMethod(paymentMethod);
       setAmount('');
       setMemo('');
+      setCategoryTouched(false);
       if (type === 'expense' && receiptFile) {
         // 내역 자체는 이미 저장됐으니, 사진만 실패하면 그렇다고 알려주고 목록은 갱신한다.
         try {
@@ -96,6 +124,8 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
       }
       setReceiptFile(null);
       setSmsKey((k) => k + 1);
+      // 방금 기록한 메모·카테고리도 다음 추천에 반영되게 다시 불러온다.
+      loadMemoHistory().catch(() => {});
       onAdded();
     } catch (err) {
       setError(getErrorMessage(err, '기록에 실패했습니다.'));
@@ -110,8 +140,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
     if (r.merchant) setMemo(r.merchant);
     if (r.occurredOn) setOccurredOn(r.occurredOn);
     if (r.paymentMethod) setPaymentMethod(r.paymentMethod);
-    const guessed = r.merchant ? guessCategoryId(r.merchant, filteredCategories) : null;
-    if (guessed) setCategoryId(String(guessed));
+    // 카테고리는 메모(가게 이름)가 바뀌면 자동 추천이 알아서 골라준다.
   }
 
   // 지금 입력한 메모·금액·카테고리·분담 비율을 그대로 템플릿으로 저장한다. 메모가 템플릿 이름이 된다.
@@ -212,7 +241,13 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
           className="quick-amount"
           autoFocus
         />
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+        <select
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            setCategoryTouched(true);
+          }}
+        >
           <option value="">카테고리 선택</option>
           {filteredCategories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -226,6 +261,33 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
         <input type="text" placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} />
         <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
       </div>
+
+      {suggestions.length > 0 && (
+        <div className="category-suggest" role="group" aria-label="추천 카테고리">
+          <span className="muted small">추천</span>
+          {suggestions.map((sg) => {
+            const category = filteredCategories.find((c) => c.id === sg.categoryId);
+            if (!category) return null;
+            const active = categoryId === String(sg.categoryId);
+            return (
+              <button
+                key={sg.categoryId}
+                type="button"
+                className={active ? 'suggest-chip active' : 'suggest-chip'}
+                aria-pressed={active}
+                onClick={() => {
+                  setCategoryId(String(sg.categoryId));
+                  setCategoryTouched(true);
+                }}
+              >
+                <span className="category-dot" style={{ backgroundColor: category.color, color: category.color }} />
+                {category.name}
+                <span className="suggest-reason">{sg.source === 'history' ? `${sg.count}번 고름` : '가게 이름'}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {type === 'expense' && (
         <>
