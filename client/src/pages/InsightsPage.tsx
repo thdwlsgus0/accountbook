@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SpendingCalendar from '../components/SpendingCalendar';
@@ -62,6 +63,12 @@ export default function InsightsPage() {
   return (
     <div className="page">
       <h2>통계</h2>
+      <Link to="/report" className="card report-entry">
+        <span>
+          🎁 <strong>우리의 {new Date().getFullYear()}</strong> 연말 결산 보기
+        </span>
+        <span aria-hidden="true">›</span>
+      </Link>
       <div className="month-nav">
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>

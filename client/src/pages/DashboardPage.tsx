@@ -7,6 +7,7 @@ import BudgetBar from '../components/BudgetBar';
 import SettlementCard from '../components/SettlementCard';
 import UpcomingRecurringBanner from '../components/UpcomingRecurringBanner';
 import GoalReminderBanner from '../components/GoalReminderBanner';
+import YearReportBanner from '../components/YearReportBanner';
 import PurchaseRequestsCard from '../components/PurchaseRequestsCard';
 import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -73,6 +74,7 @@ export default function DashboardPage() {
         <button onClick={() => shiftMonth(1)}>다음 달</button>
       </div>
 
+      <YearReportBanner householdId={currentId} />
       <UpcomingRecurringBanner householdId={currentId} />
       <GoalReminderBanner householdId={currentId} goals={goals} />
 

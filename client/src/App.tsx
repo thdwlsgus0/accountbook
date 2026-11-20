@@ -15,6 +15,7 @@ const HouseholdSetupPage = lazy(() => import('./pages/HouseholdSetupPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
 const InsightsPage = lazy(() => import('./pages/InsightsPage'));
+const ReportPage = lazy(() => import('./pages/ReportPage'));
 const RecurringPage = lazy(() => import('./pages/RecurringPage'));
 const BudgetsPage = lazy(() => import('./pages/BudgetsPage'));
 const GoalsPage = lazy(() => import('./pages/GoalsPage'));
@@ -72,6 +73,14 @@ export default function App() {
                   element={
                     <Layout>
                       <InsightsPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/report"
+                  element={
+                    <Layout>
+                      <ReportPage />
                     </Layout>
                   }
                 />

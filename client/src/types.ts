@@ -219,3 +219,26 @@ export interface PurchaseRequest {
   respondedAt: string | null;
   createdAt: string;
 }
+
+// 연말 결산 리포트 (/summary/yearly). 아직 안 끝난 해는 오늘까지 기준.
+export interface YearlyReport {
+  year: number;
+  expense: number;
+  income: number;
+  recordCount: number;
+  // 하나라도 기록이 있었던 날 수
+  activeDays: number;
+  previousExpense: number;
+  previousIncome: number;
+  monthly: { month: number; expense: number; income: number }[];
+  topCategories: { name: string; color: string; total: number }[];
+  // 메모(가게)별 지출 횟수 상위 5개 (2번 이상 간 곳만)
+  topMerchants: { memo: string; count: number; total: number }[];
+  biggest: { memo: string | null; amount: number; occurredOn: string; categoryName: string | null }[];
+  // 데이트 카테고리 지출이 있었던 날 수와 합계
+  dates: { days: number; total: number };
+  members: { userId: number; name: string; paid: number; count: number }[];
+  busiestDay: { date: string; total: number; count: number } | null;
+  savings: { total: number; count: number };
+  paymentMethods: { method: PaymentMethod | null; total: number }[];
+}

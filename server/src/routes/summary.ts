@@ -263,6 +263,160 @@ router.get('/date-stats', async (req: Request, res: Response) => {
   });
 });
 
+// 연말 결산 리포트("우리의 2026"). 한 해를 넘겨보는 카드에 필요한 숫자를 한 번에 모아 준다.
+// 올해처럼 아직 안 끝난 해는 "오늘까지" 기준이다. 카드마다 쓰는 쿼리가 서로 독립적이라 동시에 돌린다.
+type Row = RowDataPacket & Record<string, unknown>;
+const num = (v: unknown) => Number(v ?? 0);
+
+router.get('/yearly', async (req: Request, res: Response) => {
+  await syncRecurringTransactions(req.householdId);
+  const year = Number(req.query.year) || new Date().getFullYear();
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({ error: { message: '연도를 확인해주세요.' } });
+  }
+  const start = `${year}-01-01`;
+  const end = `${year + 1}-01-01`;
+  const prevStart = `${year - 1}-01-01`;
+  const h = req.householdId;
+  const q = async (sql: string, params: unknown[]) => (await pool.query<Row[]>(sql, params))[0];
+
+  const [
+    totalsRows,
+    previousRows,
+    monthlyRows,
+    categoryRows,
+    merchantRows,
+    biggestRows,
+    dateRows,
+    memberRows,
+    busiestRows,
+    savingsRows,
+    paymentRows,
+  ] = await Promise.all([
+    q(
+      `SELECT COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense,
+              COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
+              COUNT(*) AS recordCount, COUNT(DISTINCT occurred_on) AS activeDays
+       FROM transactions WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ?`,
+      [h, start, end]
+    ),
+    q(
+      `SELECT COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense,
+              COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income
+       FROM transactions WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ?`,
+      [h, prevStart, start]
+    ),
+    q(
+      `SELECT MONTH(occurred_on) AS m,
+              COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense,
+              COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income
+       FROM transactions WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ?
+       GROUP BY m`,
+      [h, start, end]
+    ),
+    q(
+      `SELECT c.name, c.color, SUM(t.amount) AS total
+       FROM transactions t JOIN categories c ON c.id = t.category_id
+       WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+       GROUP BY c.id, c.name, c.color ORDER BY total DESC LIMIT 5`,
+      [h, start, end]
+    ),
+    // 고정비 자동 기록은 "자주 간 곳"이 아니니 뺀다.
+    q(
+      `SELECT memo, COUNT(*) AS count, SUM(amount) AS total
+       FROM transactions
+       WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?
+         AND memo IS NOT NULL AND memo <> '' AND memo <> '(고정비 자동 등록)'
+       GROUP BY memo HAVING COUNT(*) >= 2 ORDER BY count DESC, total DESC LIMIT 5`,
+      [h, start, end]
+    ),
+    q(
+      `SELECT t.memo, t.amount, t.occurred_on AS occurredOn, c.name AS categoryName
+       FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
+       WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+       ORDER BY t.amount DESC, t.occurred_on DESC LIMIT 3`,
+      [h, start, end]
+    ),
+    // 데이트 "횟수"는 건수가 아니라 데이트 지출이 있었던 날 수로 센다 (밥+카페+영화도 하루 데이트).
+    q(
+      `SELECT COUNT(DISTINCT t.occurred_on) AS days, COALESCE(SUM(t.amount), 0) AS total
+       FROM transactions t JOIN categories c ON c.id = t.category_id AND c.is_date = TRUE
+       WHERE t.household_id = ? AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?`,
+      [h, start, end]
+    ),
+    q(
+      `SELECT u.id AS userId, u.name, COALESCE(SUM(t.amount), 0) AS paid, COUNT(t.id) AS count
+       FROM household_members hm
+       JOIN users u ON u.id = hm.user_id
+       LEFT JOIN transactions t ON t.user_id = hm.user_id AND t.household_id = hm.household_id
+         AND t.type = 'expense' AND t.occurred_on >= ? AND t.occurred_on < ?
+       WHERE hm.household_id = ?
+       GROUP BY u.id, u.name ORDER BY paid DESC`,
+      [start, end, h]
+    ),
+    q(
+      `SELECT occurred_on AS date, SUM(amount) AS total, COUNT(*) AS count
+       FROM transactions
+       WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?
+       GROUP BY occurred_on ORDER BY total DESC LIMIT 1`,
+      [h, start, end]
+    ),
+    q(
+      `SELECT COALESCE(SUM(sc.amount), 0) AS total, COUNT(*) AS count
+       FROM savings_goal_contributions sc JOIN savings_goals g ON g.id = sc.goal_id
+       WHERE g.household_id = ? AND sc.contributed_on >= ? AND sc.contributed_on < ?`,
+      [h, start, end]
+    ),
+    // 결제수단은 GROUP BY 대신 조건부 합계로 구한다 (insights와 같은 이유).
+    q(
+      `SELECT COALESCE(SUM(CASE WHEN payment_method = 'card' THEN amount ELSE 0 END), 0) AS card,
+              COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END), 0) AS cash,
+              COALESCE(SUM(CASE WHEN payment_method = 'naverpay' THEN amount ELSE 0 END), 0) AS naverpay,
+              COALESCE(SUM(CASE WHEN payment_method IS NULL THEN amount ELSE 0 END), 0) AS unspecified
+       FROM transactions
+       WHERE household_id = ? AND type = 'expense' AND occurred_on >= ? AND occurred_on < ?`,
+      [h, start, end]
+    ),
+  ]);
+
+  const totals = totalsRows[0];
+  const previous = previousRows[0];
+  const payments = paymentRows[0];
+  const busiest = busiestRows[0];
+
+  res.json({
+    year,
+    expense: num(totals.expense),
+    income: num(totals.income),
+    recordCount: num(totals.recordCount),
+    activeDays: num(totals.activeDays),
+    previousExpense: num(previous.expense),
+    previousIncome: num(previous.income),
+    monthly: Array.from({ length: 12 }, (_, i) => {
+      const row = monthlyRows.find((r) => num(r.m) === i + 1);
+      return { month: i + 1, expense: num(row?.expense), income: num(row?.income) };
+    }),
+    topCategories: categoryRows.map((r) => ({ name: r.name, color: r.color, total: num(r.total) })),
+    topMerchants: merchantRows.map((r) => ({ memo: r.memo, count: num(r.count), total: num(r.total) })),
+    biggest: biggestRows.map((r) => ({
+      memo: r.memo,
+      amount: num(r.amount),
+      occurredOn: r.occurredOn,
+      categoryName: r.categoryName,
+    })),
+    dates: { days: num(dateRows[0].days), total: num(dateRows[0].total) },
+    members: memberRows.map((r) => ({ userId: r.userId, name: r.name, paid: num(r.paid), count: num(r.count) })),
+    busiestDay: busiest ? { date: busiest.date, total: num(busiest.total), count: num(busiest.count) } : null,
+    savings: { total: num(savingsRows[0].total), count: num(savingsRows[0].count) },
+    paymentMethods: [
+      { method: 'card', total: num(payments.card) },
+      { method: 'cash', total: num(payments.cash) },
+      { method: 'naverpay', total: num(payments.naverpay) },
+      { method: null, total: num(payments.unspecified) },
+    ].filter((p) => p.total > 0),
+  });
+});
+
 // 이번 달 "누가 누구에게 얼마" 정산 (N명).
 // - members[].paid: 그 사람이 이번 달에 낸 지출 전체(공동+개인 합친 금액) — "내가 얼마 썼나" 보여주는 용도.
 // - members[].balance: 정산 기준 받을 돈(+) / 보낼 돈(-). 전원 합은 항상 0.
