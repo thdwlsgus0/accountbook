@@ -1,9 +1,12 @@
 import { Transaction } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import ReceiptButton from './ReceiptButton';
+import { useNavigate } from 'react-router-dom';
+import MemoText from './MemoText';
 import { paymentMethodLabel } from '../utils/payment';
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+  const navigate = useNavigate();
   if (transactions.length === 0) {
     return <p className="muted">기록된 내역이 없습니다.</p>;
   }
@@ -22,7 +25,15 @@ export default function TransactionList({ transactions }: { transactions: Transa
               <div>
                 <p className="transaction-category">
                   {t.categoryName || '미분류'}
-                  {t.memo ? ` · ${t.memo}` : ''}
+                  {t.memo && (
+                    <>
+                      {' · '}
+                      <MemoText
+                        memo={t.memo}
+                        onTagClick={(tag) => navigate(`/transactions?tag=${encodeURIComponent(tag)}`)}
+                      />
+                    </>
+                  )}
                   {badge && <span className="split-badge">{badge}</span>}
                   {t.hasReceipt && <ReceiptButton transactionId={t.id} />}
                 </p>

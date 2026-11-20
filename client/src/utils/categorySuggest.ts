@@ -1,4 +1,5 @@
 import { Category, TransactionType } from '../types';
+import { stripTags } from './tags';
 
 // 카테고리 자동 추천. 빠른 입력에서 메모를 쓰면 어떤 카테고리일지 짐작해서 골라둔다.
 // 1순위: 이 가계부에서 같은 메모(또는 같은 가게)로 예전에 고른 카테고리 — 우리 집 습관이 제일 정확하다.
@@ -31,14 +32,14 @@ export const CATEGORY_HINTS: Array<{ pattern: RegExp; names: string[] }> = [
   { pattern: /SKT|KT|LG U\+|LGU\+|통신|관리비|전기|가스|수도/, names: ['주거/통신', '통신'] },
 ];
 
-// 비교용으로 대소문자·공백을 없앤다. "스타벅스 강남점"과 "스타벅스강남점"을 같게 본다.
+// 비교용으로 #태그·대소문자·공백을 없앤다. "스타벅스 강남점 #데이트"와 "스타벅스강남점"을 같게 본다.
 function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, '');
+  return stripTags(text).toLowerCase().replace(/\s+/g, '');
 }
 
 // 첫 단어를 가게(브랜드) 이름으로 본다. "스타벅스 강남점" → "스타벅스"
 function brandOf(text: string): string {
-  return normalize(text.trim().split(/\s+/)[0] ?? '');
+  return normalize(stripTags(text).split(/\s+/)[0] ?? '');
 }
 
 function hintCategoryIds(memo: string, categories: Category[]): number[] {

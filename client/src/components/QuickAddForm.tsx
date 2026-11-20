@@ -258,7 +258,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
       </div>
 
       <div className="form-row">
-        <input type="text" placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} />
+        <input type="text" placeholder="메모 (선택) · #태그" value={memo} onChange={(e) => setMemo(e.target.value)} />
         <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
       </div>
 

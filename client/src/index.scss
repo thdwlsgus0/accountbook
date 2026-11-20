@@ -2343,3 +2343,124 @@ button.receipt-badge {
   flex-wrap: wrap;
   justify-content: center;
 }
+
+// 태그와 검색
+.memo-tag {
+  display: inline;
+  padding: 0 0.3rem;
+  margin: 0 0.1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font: inherit;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary-soft) 60%, var(--color-primary) 20%);
+  }
+}
+
+span.memo-tag {
+  cursor: default;
+}
+
+.tx-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tx-search-row {
+  display: flex;
+  gap: 0.4rem;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  button {
+    flex-shrink: 0;
+
+    &.active {
+      border-color: var(--color-primary);
+      color: var(--color-primary-dark);
+      background: var(--color-primary-soft);
+    }
+  }
+}
+
+.tx-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tx-tag {
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+
+  span {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+
+  &.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+
+    span {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+}
+
+.tx-search-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.6rem 0.8rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--color-border);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+
+    > span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-muted);
+    }
+  }
+}
+
+.tx-range {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  span {
+    color: var(--color-muted);
+  }
+}
+
+.tx-search-summary {
+  margin: 0;
+  font-size: 0.95rem;
+}

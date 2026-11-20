@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, getErrorMessage } from '../api/client';
 import { useHousehold } from '../context/HouseholdContext';
 import SplitControl from '../components/SplitControl';
@@ -13,6 +14,21 @@ import { triggerDownload } from '../utils/download';
 import { computeBalances, computeTransfers } from '../utils/settlement';
 import SettlementTransfers from '../components/SettlementTransfers';
 import { deleteReceipt, uploadReceipt } from '../utils/receipt';
+import MemoText from '../components/MemoText';
+import TransactionSearch, {
+  EMPTY_FILTERS,
+  hasAnyFilter,
+  SearchFilters,
+  TagStat,
+} from '../components/TransactionSearch';
+
+interface SearchResult {
+  transactions: Transaction[];
+  count: number;
+  expense: number;
+  income: number;
+  truncated: boolean;
+}
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -51,6 +67,19 @@ export default function TransactionsPage() {
   const [settling, setSettling] = useState(false);
   const [settleError, setSettleError] = useState('');
 
+  // 검색: 조건이 하나라도 있으면 월별 목록 대신 모든 달의 검색 결과를 보여준다.
+  // 대시보드에서 #태그를 누르면 /transactions?tag=... 로 들어와서 바로 그 태그로 검색된다.
+  const [params, setParams] = useSearchParams();
+  const [filters, setFilters] = useState<SearchFilters>(() => ({
+    ...EMPTY_FILTERS,
+    tag: params.get('tag') ?? '',
+    q: params.get('q') ?? '',
+  }));
+  const [search, setSearch] = useState<SearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [tags, setTags] = useState<TagStat[]>([]);
+  const searchActive = hasAnyFilter(filters);
+
   const load = useCallback(async () => {
     if (!currentId) return;
     const [tRes, cRes, hRes] = await Promise.all([
@@ -66,6 +95,59 @@ export default function TransactionsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadTags = useCallback(async () => {
+    if (!currentId) return;
+    const res = await api.get<{ tags: TagStat[] }>(`/households/${currentId}/transactions/tags`);
+    setTags(res.data.tags);
+  }, [currentId]);
+
+  useEffect(() => {
+    loadTags().catch(() => setTags([]));
+  }, [loadTags]);
+
+  const runSearch = useCallback(async () => {
+    if (!currentId || !hasAnyFilter(filters)) {
+      setSearch(null);
+      return;
+    }
+    const query = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''));
+    setSearching(true);
+    try {
+      const res = await api.get<SearchResult>(`/households/${currentId}/transactions/search`, { params: query });
+      setSearch(res.data);
+    } finally {
+      setSearching(false);
+    }
+  }, [currentId, filters]);
+
+  // 글자를 칠 때마다 요청하지 않게 잠깐 멈췄을 때 검색한다.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      runSearch();
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [runSearch]);
+
+  function changeFilters(next: SearchFilters) {
+    setFilters(next);
+    // 주소의 ?tag= 는 처음 들어올 때만 쓰고, 조건을 바꾸면 지운다 (새로고침 때 옛 조건이 되살아나지 않게).
+    if (params.has('tag') || params.has('q')) setParams({}, { replace: true });
+  }
+
+  function searchTag(tag: string) {
+    changeFilters({ ...filters, tag });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // 수정/삭제 후엔 월별 목록, 검색 결과, 태그 통계를 모두 새로 고친다.
+  function refresh() {
+    load();
+    loadTags().catch(() => {});
+    if (searchActive) runSearch();
+  }
+
+  const visible = searchActive ? (search?.transactions ?? []) : transactions;
 
   function startEdit(t: Transaction) {
     setEditingId(t.id);
@@ -101,7 +183,7 @@ export default function TransactionsPage() {
         await deleteReceipt(currentId, id);
       }
       setEditingId(null);
-      load();
+      refresh();
     } catch (err) {
       setEditError(getErrorMessage(err, '저장에 실패했습니다.'));
     } finally {
@@ -112,7 +194,7 @@ export default function TransactionsPage() {
   async function handleDelete(id: number) {
     if (!currentId || !confirm('이 내역을 삭제할까요?')) return;
     await api.delete(`/households/${currentId}/transactions/${id}`);
-    load();
+    refresh();
   }
 
   // 백업·세금정산용 CSV 내보내기. scope가 'month'면 지금 보고 있는 달만, 'all'이면 전체 내역.
@@ -152,7 +234,12 @@ export default function TransactionsPage() {
   const nameOf = (id: number) => members.find((m) => m.id === id)?.name ?? '';
   const settlementPreview =
     members.length >= 2
-      ? computeTransfers(computeBalances(selectedTransactions, members.map((m) => m.id))).map((t) => ({
+      ? computeTransfers(
+          computeBalances(
+            selectedTransactions,
+            members.map((m) => m.id)
+          )
+        ).map((t) => ({
           fromUserName: nameOf(t.fromUserId),
           toUserName: nameOf(t.toUserId),
           amount: t.amount,
@@ -177,23 +264,60 @@ export default function TransactionsPage() {
 
   return (
     <div className="page">
-      <div className="month-nav">
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-      </div>
+      <TransactionSearch
+        filters={filters}
+        onChange={(next) => {
+          changeFilters(next);
+          // 검색 중엔 월별 목록 기준인 더치페이를 끈다.
+          if (hasAnyFilter(next)) setDutchMode(false);
+        }}
+        tags={tags}
+        categories={categories}
+        members={members}
+      />
 
-      <div className="export-actions">
-        <button type="button" onClick={() => handleExport('month')}>
-          이번 달 CSV 내보내기
-        </button>
-        <button type="button" onClick={() => handleExport('all')}>
-          전체 내역 백업(CSV)
-        </button>
-        {members.length >= 2 && (
-          <button type="button" className={dutchMode ? 'active' : ''} onClick={toggleDutchMode}>
-            {dutchMode ? '더치페이 종료' : '더치페이'}
-          </button>
-        )}
-      </div>
+      {searchActive ? (
+        <p className="tx-search-summary" aria-live="polite">
+          {searching && !search ? (
+            <Spinner size="sm" />
+          ) : search ? (
+            <>
+              모든 달에서 <strong>{search.count}건</strong>
+              {search.expense > 0 && (
+                <>
+                  {' · '}지출 <strong className="amount expense">{formatCurrency(search.expense)}</strong>
+                </>
+              )}
+              {search.income > 0 && (
+                <>
+                  {' · '}수입 <strong className="amount income">{formatCurrency(search.income)}</strong>
+                </>
+              )}
+              {search.truncated && <span className="muted small"> (최근 300건만 보여줘요)</span>}
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <>
+          <div className="month-nav">
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+          </div>
+
+          <div className="export-actions">
+            <button type="button" onClick={() => handleExport('month')}>
+              이번 달 CSV 내보내기
+            </button>
+            <button type="button" onClick={() => handleExport('all')}>
+              전체 내역 백업(CSV)
+            </button>
+            {members.length >= 2 && (
+              <button type="button" className={dutchMode ? 'active' : ''} onClick={toggleDutchMode}>
+                {dutchMode ? '더치페이 종료' : '더치페이'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {dutchMode && (
         <div className="card dutch-panel">
@@ -215,7 +339,7 @@ export default function TransactionsPage() {
       )}
 
       <ul className="transaction-list">
-        {transactions.map((t) => {
+        {visible.map((t) => {
           const selectable = dutchMode && t.type === 'expense' && t.splitType === 'shared' && !t.isSettled;
           return (
             <li key={t.id} className={`transaction-item ${t.type}`}>
@@ -317,7 +441,12 @@ export default function TransactionsPage() {
                     <div>
                       <p className="transaction-category">
                         {t.categoryName || '미분류'}
-                        {t.memo ? ` · ${t.memo}` : ''}
+                        {t.memo && (
+                          <>
+                            {' · '}
+                            <MemoText memo={t.memo} onTagClick={searchTag} />
+                          </>
+                        )}
                         {splitBadgeLabel(t.splitType, t.payerSharePercent) && (
                           <span className="split-badge">{splitBadgeLabel(t.splitType, t.payerSharePercent)}</span>
                         )}
@@ -347,7 +476,11 @@ export default function TransactionsPage() {
             </li>
           );
         })}
-        {transactions.length === 0 && <p className="muted">기록된 내역이 없습니다.</p>}
+        {visible.length === 0 && (
+          <p className="muted">
+            {searchActive ? (searching ? '' : '조건에 맞는 내역이 없어요.') : '기록된 내역이 없습니다.'}
+          </p>
+        )}
       </ul>
     </div>
   );

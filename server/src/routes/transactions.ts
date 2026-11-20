@@ -6,7 +6,8 @@ import { requireHouseholdMember } from '../middlewares/household.js';
 import { syncRecurringTransactions } from '../utils/recurring.js';
 import { currentYearMonth, monthRange } from '../utils/date.js';
 import { parseSplit, SplitType } from '../utils/split.js';
-import { parsePaymentMethod, PAYMENT_METHOD_LABEL, PaymentMethod } from '../utils/payment.js';
+import { parsePaymentMethod, PAYMENT_METHOD_LABEL, PaymentMethod, PAYMENT_METHODS } from '../utils/payment.js';
+import { extractTags } from '../utils/tags.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, requireHouseholdMember);
@@ -61,21 +62,25 @@ function isValidTransactionBody(body: TransactionBody): body is Required<Pick<Tr
   );
 }
 
+// 월별 목록과 검색 결과가 같은 모양으로 내려가도록 SELECT/JOIN을 같이 쓴다.
+const LIST_COLUMNS = `t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
+            t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
+            t.user_id AS userId, u.name AS userName,
+            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
+            t.is_settled AS isSettled, t.payment_method AS paymentMethod,
+            EXISTS(SELECT 1 FROM transaction_receipts r WHERE r.transaction_id = t.id) AS hasReceipt`;
+const LIST_FROM = `FROM transactions t
+     LEFT JOIN categories c ON c.id = t.category_id
+     JOIN users u ON u.id = t.user_id`;
+
 router.get('/', async (req: Request, res: Response) => {
   await syncRecurringTransactions(req.householdId);
 
   const month = (req.query.month as string) || currentYearMonth();
   const [start, end] = monthRange(month);
   const [rows] = await pool.query<TransactionRow[]>(
-    `SELECT t.id, t.type, t.amount, t.memo, t.occurred_on AS occurredOn,
-            t.category_id AS categoryId, c.name AS categoryName, c.color AS categoryColor,
-            t.user_id AS userId, u.name AS userName,
-            t.split_type AS splitType, t.payer_share_percent AS payerSharePercent,
-            t.is_settled AS isSettled, t.payment_method AS paymentMethod,
-            EXISTS(SELECT 1 FROM transaction_receipts r WHERE r.transaction_id = t.id) AS hasReceipt
-     FROM transactions t
-     LEFT JOIN categories c ON c.id = t.category_id
-     JOIN users u ON u.id = t.user_id
+    `SELECT ${LIST_COLUMNS}
+     ${LIST_FROM}
      WHERE t.household_id = ? AND t.occurred_on >= ? AND t.occurred_on < ?
      ORDER BY t.occurred_on DESC, t.id DESC`,
     [req.householdId, start, end]
@@ -140,6 +145,123 @@ router.get('/export', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(csv);
+});
+
+// 검색: 모든 달에서 조건에 맞는 내역을 찾는다. 조건은 전부 선택이고, 준 것만 AND로 묶는다.
+// - q: 메모나 카테고리 이름에 들어간 글자 / tag: 메모 속 #태그 (정확히 그 태그만)
+// - from, to: 날짜(YYYY-MM-DD, 둘 다 포함) / min, max: 금액 / type, categoryId, paymentMethod, userId
+//   (categoryId, paymentMethod는 'none'이면 "미분류/미지정"만)
+// 목록은 최근 300건까지만 내려주고, 건수·합계는 조건에 맞는 전체 기준으로 계산한다.
+const SEARCH_LIMIT = 300;
+const SEARCH_SCAN_LIMIT = 5000;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function escapeLike(text: string): string {
+  return text.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+router.get('/search', async (req: Request, res: Response) => {
+  const str = (key: string) => {
+    const v = req.query[key];
+    return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+  };
+  const conditions = ['t.household_id = ?'];
+  const params: unknown[] = [req.householdId];
+
+  const q = str('q');
+  if (q) {
+    conditions.push("(t.memo LIKE ? ESCAPE '\\\\' OR c.name LIKE ? ESCAPE '\\\\')");
+    params.push(`%${escapeLike(q)}%`, `%${escapeLike(q)}%`);
+  }
+  const tag = str('tag')?.replace(/^#/, '') ?? null;
+  if (tag) {
+    // LIKE로 먼저 좁히고, "#여행지"가 "#여행"에 걸리지 않게 아래에서 태그를 정확히 다시 확인한다.
+    conditions.push("t.memo LIKE ? ESCAPE '\\\\'");
+    params.push(`%#${escapeLike(tag)}%`);
+  }
+  const from = str('from');
+  if (from && DATE_ONLY.test(from)) {
+    conditions.push('t.occurred_on >= ?');
+    params.push(from);
+  }
+  const to = str('to');
+  if (to && DATE_ONLY.test(to)) {
+    conditions.push('t.occurred_on <= ?');
+    params.push(to);
+  }
+  const min = Number(str('min'));
+  if (str('min') && Number.isFinite(min)) {
+    conditions.push('t.amount >= ?');
+    params.push(min);
+  }
+  const max = Number(str('max'));
+  if (str('max') && Number.isFinite(max)) {
+    conditions.push('t.amount <= ?');
+    params.push(max);
+  }
+  const type = str('type');
+  if (type === 'income' || type === 'expense') {
+    conditions.push('t.type = ?');
+    params.push(type);
+  }
+  const categoryId = str('categoryId');
+  if (categoryId === 'none') conditions.push('t.category_id IS NULL');
+  else if (categoryId && Number.isInteger(Number(categoryId))) {
+    conditions.push('t.category_id = ?');
+    params.push(Number(categoryId));
+  }
+  const paymentMethod = str('paymentMethod');
+  if (paymentMethod === 'none') conditions.push('t.payment_method IS NULL');
+  else if (paymentMethod && (PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
+    conditions.push('t.payment_method = ?');
+    params.push(paymentMethod);
+  }
+  const userId = str('userId');
+  if (userId && Number.isInteger(Number(userId))) {
+    conditions.push('t.user_id = ?');
+    params.push(Number(userId));
+  }
+
+  const [rows] = await pool.query<TransactionRow[]>(
+    `SELECT ${LIST_COLUMNS}
+     ${LIST_FROM}
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY t.occurred_on DESC, t.id DESC
+     LIMIT ${SEARCH_SCAN_LIMIT}`,
+    params
+  );
+  const matched = tag ? rows.filter((r) => extractTags(r.memo).includes(tag)) : rows;
+
+  res.json({
+    transactions: matched.slice(0, SEARCH_LIMIT).map((r) => ({ ...r, hasReceipt: !!r.hasReceipt })),
+    count: matched.length,
+    expense: matched.filter((r) => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0),
+    income: matched.filter((r) => r.type === 'income').reduce((sum, r) => sum + r.amount, 0),
+    truncated: matched.length > SEARCH_LIMIT,
+  });
+});
+
+// 이 가계부에서 쓴 #태그 목록과 태그별 건수·지출 합계. 많이 쓴 순.
+router.get('/tags', async (req: Request, res: Response) => {
+  const [rows] = await pool.query<(RowDataPacket & { memo: string; type: string; amount: number })[]>(
+    `SELECT memo, type, amount FROM transactions WHERE household_id = ? AND memo LIKE '%#%'`,
+    [req.householdId]
+  );
+  const stats = new Map<string, { count: number; expense: number }>();
+  for (const row of rows) {
+    for (const tag of extractTags(row.memo)) {
+      const prev = stats.get(tag) ?? { count: 0, expense: 0 };
+      stats.set(tag, {
+        count: prev.count + 1,
+        expense: prev.expense + (row.type === 'expense' ? row.amount : 0),
+      });
+    }
+  }
+  const tags = [...stats]
+    .map(([tag, s]) => ({ tag, ...s }))
+    .sort((a, b) => b.count - a.count || b.expense - a.expense)
+    .slice(0, 50);
+  res.json({ tags });
 });
 
 // 카테고리 자동 추천용: 최근 1년 동안 "이 메모엔 이 카테고리를 몇 번 골랐는지".
