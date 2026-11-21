@@ -168,9 +168,9 @@ router.get('/insights', async (req: Request, res: Response) => {
   );
 
   // 이번 달 지출을 결제수단별로 나눈 합계. 결제수단을 안 고른 지출은 method = null("미지정")로 묶인다.
-  // payment_method(ENUM)로 GROUP BY 하면 운영 DB(TiDB)에서 컬럼이 있는데도
-  // "Unknown column 'payment_method' in 'group statement'"로 실패했다. 그래서 GROUP BY 없이
   // 결제수단마다 조건부 합계를 한 줄로 구하고, 0원인 결제수단은 빼서 큰 순서로 정렬한다.
+  // (처음엔 GROUP BY payment_method였는데 배포 직후 500이 나서 바꿨다. 나중에 보니 원인은 쿼리가 아니라
+  //  운영 DB에 컬럼이 아직 없었던 것이었고, 그 뒤로 db/migrate.ts가 배포 때 스키마를 맞춘다. 결과는 같다.)
   const [[paymentSums]] = await pool.query<
     (RowDataPacket & { card: number; cash: number; naverpay: number; unspecified: number })[]
   >(
@@ -367,7 +367,7 @@ router.get('/yearly', async (req: Request, res: Response) => {
        WHERE g.household_id = ? AND sc.contributed_on >= ? AND sc.contributed_on < ?`,
       [h, start, end]
     ),
-    // 결제수단은 GROUP BY 대신 조건부 합계로 구한다 (insights와 같은 이유).
+    // 결제수단별 합계 (insights와 같은 방식).
     q(
       `SELECT COALESCE(SUM(CASE WHEN payment_method = 'card' THEN amount ELSE 0 END), 0) AS card,
               COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END), 0) AS cash,
