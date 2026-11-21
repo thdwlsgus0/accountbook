@@ -7,34 +7,42 @@ import { pool } from '../config/db.js';
 // 각 항목은 "이미 있으면 건너뛰기"라 몇 번을 실행해도 안전하다(멱등).
 // 새 테이블/컬럼을 추가할 땐 schema.sql과 여기에 같이 넣는다.
 
+// 지금 DB에 있는 테이블/컬럼 목록. 항목마다 information_schema를 따로 묻지 않고 두 번에 한꺼번에 읽는다
+// (서버리스라 인스턴스가 새로 뜰 때마다 이 확인이 첫 요청 앞에서 돌기 때문에, 왕복 횟수가 곧 첫 응답 지연이다).
+interface SchemaSnapshot {
+  tables: Set<string>;
+  // "table.column"
+  columns: Set<string>;
+}
+
 interface Migration {
   name: string;
-  isApplied: () => Promise<boolean>;
+  isApplied: (schema: SchemaSnapshot) => boolean;
   statements: string[];
 }
 
-async function tableExists(table: string): Promise<boolean> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-    [table]
-  );
-  return rows.length > 0;
+async function loadSchema(): Promise<SchemaSnapshot> {
+  const [[tables], [columns]] = await Promise.all([
+    pool.query<RowDataPacket[]>('SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'),
+    pool.query<RowDataPacket[]>(
+      'SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()'
+    ),
+  ]);
+  return {
+    tables: new Set(tables.map((r) => String(r.name))),
+    columns: new Set(columns.map((r) => `${r.tableName}.${r.columnName}`)),
+  };
 }
 
-async function columnExists(table: string, column: string): Promise<boolean> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT 1 FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-    [table, column]
-  );
-  return rows.length > 0;
-}
+const tableExists = (table: string) => (schema: SchemaSnapshot) => schema.tables.has(table);
+const columnExists = (table: string, column: string) => (schema: SchemaSnapshot) =>
+  schema.columns.has(`${table}.${column}`);
 
 // 순서가 중요하다: 테이블을 먼저 만들고, 그 테이블에 컬럼을 추가한다.
 const MIGRATIONS: Migration[] = [
   {
     name: 'table transaction_receipts',
-    isApplied: () => tableExists('transaction_receipts'),
+    isApplied: tableExists('transaction_receipts'),
     statements: [`CREATE TABLE IF NOT EXISTS transaction_receipts (
   transaction_id INT PRIMARY KEY,
   mime_type VARCHAR(50) NOT NULL,
@@ -45,7 +53,7 @@ const MIGRATIONS: Migration[] = [
   },
   {
     name: 'table expense_templates',
-    isApplied: () => tableExists('expense_templates'),
+    isApplied: tableExists('expense_templates'),
     statements: [`CREATE TABLE IF NOT EXISTS expense_templates (
   id INT AUTO_INCREMENT PRIMARY KEY,
   household_id INT NOT NULL,
@@ -64,7 +72,7 @@ const MIGRATIONS: Migration[] = [
   },
   {
     name: 'table purchase_requests',
-    isApplied: () => tableExists('purchase_requests'),
+    isApplied: tableExists('purchase_requests'),
     statements: [`CREATE TABLE IF NOT EXISTS purchase_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   household_id INT NOT NULL,
@@ -90,7 +98,7 @@ const MIGRATIONS: Migration[] = [
   },
   {
     name: 'column categories.is_date',
-    isApplied: () => columnExists('categories', 'is_date'),
+    isApplied: columnExists('categories', 'is_date'),
     statements: [
       'ALTER TABLE categories ADD COLUMN is_date BOOLEAN NOT NULL DEFAULT FALSE',
       "UPDATE categories SET is_date = TRUE WHERE type = 'expense' AND name IN ('데이트', '기념일')",
@@ -103,12 +111,12 @@ const MIGRATIONS: Migration[] = [
   },
   {
     name: 'column transactions.payment_method',
-    isApplied: () => columnExists('transactions', 'payment_method'),
+    isApplied: columnExists('transactions', 'payment_method'),
     statements: ["ALTER TABLE transactions ADD COLUMN payment_method ENUM('card', 'cash', 'naverpay') NULL"],
   },
   {
     name: 'column expense_templates.payment_method',
-    isApplied: () => columnExists('expense_templates', 'payment_method'),
+    isApplied: columnExists('expense_templates', 'payment_method'),
     statements: ["ALTER TABLE expense_templates ADD COLUMN payment_method ENUM('card', 'cash', 'naverpay') NULL"],
   },
 ];
@@ -116,12 +124,15 @@ const MIGRATIONS: Migration[] = [
 async function runMigrations(): Promise<void> {
   const [[who]] = await pool.query<RowDataPacket[]>('SELECT DATABASE() AS db, CURRENT_USER() AS user');
   const applied: string[] = [];
+  let schema = await loadSchema();
   for (const m of MIGRATIONS) {
-    if (await m.isApplied()) continue;
+    if (m.isApplied(schema)) continue;
     for (const sql of m.statements) {
       await pool.query(sql);
     }
     applied.push(m.name);
+    // 방금 만든 테이블에 이미 들어 있는 컬럼을 다음 항목이 또 추가하려 하지 않게 목록을 다시 읽는다 (드문 경로).
+    schema = await loadSchema();
   }
   // 어느 DB에 붙었고 무엇을 새로 적용했는지 남겨서, 콘솔과 앱이 다른 DB를 보는 문제를 바로 알아챌 수 있게 한다.
   console.log(`[migrate] db=${who.db} user=${who.user} applied=${applied.length ? applied.join(', ') : 'none'}`);

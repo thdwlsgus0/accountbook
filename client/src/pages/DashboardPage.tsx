@@ -30,22 +30,31 @@ export default function DashboardPage() {
   // QuickAddForm에서 "사도 될까?" 요청을 보내면 올려서 요청 카드가 다시 불러오게 한다.
   const [requestsKey, setRequestsKey] = useState(0);
 
+  // 카테고리와 목표는 달과 상관없어서 가계부가 바뀔 때만 받는다 (달을 넘기거나 지출을 추가할 때 다시 받지 않게).
+  useEffect(() => {
+    if (!currentId) return;
+    Promise.all([
+      api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
+      api.get<{ goals: SavingsGoal[] }>(`/households/${currentId}/goals`),
+    ]).then(([categoriesRes, goalsRes]) => {
+      setCategories(categoriesRes.data.categories);
+      setGoals(goalsRes.data.goals);
+    });
+  }, [currentId]);
+
+  // 달마다 바뀌는 숫자들. 지출을 추가하면 이것만 다시 받는다.
   // silent: 내역 추가 직후처럼 화면을 유지한 채 숫자만 갱신할 때. 전체 로딩 화면으로 바꾸면
   // 입력 폼이 언마운트되어 "되돌리기" 안내나 에러 메시지가 바로 사라진다.
   const load = useCallback(async (silent = false) => {
     if (!currentId) return;
     if (!silent) setLoading(true);
-    const [summaryRes, categoriesRes, transactionsRes, goalsRes, settlementRes] = await Promise.all([
+    const [summaryRes, transactionsRes, settlementRes] = await Promise.all([
       api.get<MonthSummary>(`/households/${currentId}/summary`, { params: { month } }),
-      api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
       api.get<{ transactions: Transaction[] }>(`/households/${currentId}/transactions`, { params: { month } }),
-      api.get<{ goals: SavingsGoal[] }>(`/households/${currentId}/goals`),
       api.get<MonthSettlement>(`/households/${currentId}/summary/settlement`, { params: { month } }),
     ]);
     setSummary(summaryRes.data);
-    setCategories(categoriesRes.data.categories);
     setTransactions(transactionsRes.data.transactions);
-    setGoals(goalsRes.data.goals);
     setSettlement(settlementRes.data);
     setLoading(false);
   }, [currentId, month]);

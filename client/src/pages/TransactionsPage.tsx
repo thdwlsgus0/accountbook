@@ -80,16 +80,24 @@ export default function TransactionsPage() {
   const [tags, setTags] = useState<TagStat[]>([]);
   const searchActive = hasAnyFilter(filters);
 
-  const load = useCallback(async () => {
+  // 카테고리·구성원 정보는 달과 상관없어서 가계부가 바뀔 때만 받는다 (달을 넘길 때마다 다시 받지 않게).
+  useEffect(() => {
     if (!currentId) return;
-    const [tRes, cRes, hRes] = await Promise.all([
-      api.get<{ transactions: Transaction[] }>(`/households/${currentId}/transactions`, { params: { month } }),
+    Promise.all([
       api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
       api.get<HouseholdDetail>(`/households/${currentId}`),
-    ]);
-    setTransactions(tRes.data.transactions);
-    setCategories(cRes.data.categories);
-    setHousehold(hRes.data);
+    ]).then(([cRes, hRes]) => {
+      setCategories(cRes.data.categories);
+      setHousehold(hRes.data);
+    });
+  }, [currentId]);
+
+  const load = useCallback(async () => {
+    if (!currentId) return;
+    const res = await api.get<{ transactions: Transaction[] }>(`/households/${currentId}/transactions`, {
+      params: { month },
+    });
+    setTransactions(res.data.transactions);
   }, [currentId, month]);
 
   useEffect(() => {

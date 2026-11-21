@@ -24,7 +24,37 @@ function currentYearMonth(date: Date = new Date()): string {
 // 서버가 꺼져 있던 기간이 있어도(예: 며칠간 서버 미실행) 다음 조회 시점에 놓친 달만큼
 // 소급 생성되지는 않고, "이번 달" 기준으로만 동작한다 — 별도 배치/크론 없이도
 // 사용자 입장에서는 "들어올 때마다 자동으로 채워져 있는" 것처럼 보이게 하는 실용적인 절충이다.
-export async function syncRecurringTransactions(householdId: number): Promise<void> {
+// 대시보드 하나만 열어도 요약·거래·정산 API가 동시에 들어와서 각자 이 확인을 돌렸다(같은 일 3번).
+// 그래서 서버 인스턴스 안에서 가계부마다
+// - 이미 돌고 있으면 그 결과를 같이 기다리고,
+// - 1분 안에 이미 확인했으면 건너뛴다.
+// 고정비는 하루 단위로만 생기니 1분 늦는 건 문제없고, 고정비를 추가/켜면 invalidateRecurringSync로 바로 다시 확인한다.
+// 인스턴스가 여러 개여도 안전하다: 실제 생성은 아래의 조건부 UPDATE 선점으로 한 번만 일어난다.
+const SYNC_INTERVAL_MS = 60_000;
+const lastSyncedAt = new Map<number, number>();
+const inFlight = new Map<number, Promise<void>>();
+
+export function syncRecurringTransactions(householdId: number): Promise<void> {
+  const running = inFlight.get(householdId);
+  if (running) return running;
+  const last = lastSyncedAt.get(householdId);
+  if (last !== undefined && Date.now() - last < SYNC_INTERVAL_MS) return Promise.resolve();
+
+  const job = generateDueTransactions(householdId)
+    .then(() => {
+      lastSyncedAt.set(householdId, Date.now());
+    })
+    .finally(() => inFlight.delete(householdId));
+  inFlight.set(householdId, job);
+  return job;
+}
+
+// 고정비 규칙이 새로 생기거나 다시 켜졌을 때, 다음 조회에서 1분을 기다리지 않고 바로 확인하게 한다.
+export function invalidateRecurringSync(householdId: number): void {
+  lastSyncedAt.delete(householdId);
+}
+
+async function generateDueTransactions(householdId: number): Promise<void> {
   const today = new Date();
   const thisMonth = currentYearMonth(today);
   const todayDate = today.getDate();

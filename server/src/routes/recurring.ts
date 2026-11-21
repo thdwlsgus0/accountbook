@@ -4,6 +4,7 @@ import { pool } from "../config/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { requireHouseholdMember } from "../middlewares/household.js";
 import { currentYearMonth } from "../utils/date.js";
+import { invalidateRecurringSync } from "../utils/recurring.js";
 import { parseSplit, SplitType } from "../utils/split.js";
 
 const router = Router({ mergeParams: true });
@@ -90,6 +91,7 @@ router.post("/", async (req: Request<{}, {}, RecurringBody>, res: Response) => {
       split.value.payerSharePercent,
     ],
   );
+  invalidateRecurringSync(req.householdId);
   res.status(201).json({ id: result.insertId });
 });
 
@@ -104,6 +106,7 @@ router.patch(
       "UPDATE recurring_transactions SET is_active = ? WHERE id = ? AND household_id = ?",
       [!!isActive, req.params.id, req.householdId],
     );
+    invalidateRecurringSync(req.householdId);
     res.status(204).end();
   },
 );
