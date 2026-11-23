@@ -8,7 +8,7 @@ interface TemplateBarProps {
   householdId: number;
   templates: ExpenseTemplate[];
   onChanged: () => void;
-  onAdded: () => void;
+  onAdded: (newId?: number) => void;
 }
 
 const UNDO_MS = 5000;
@@ -34,7 +34,7 @@ export default function TemplateBar({ householdId, templates, onChanged, onAdded
       setLastAdded({ transactionId: res.data.id, name: t.name });
       window.clearTimeout(undoTimer.current);
       undoTimer.current = window.setTimeout(() => setLastAdded(null), UNDO_MS);
-      onAdded();
+      onAdded(res.data.id);
     } catch (err) {
       setError(getErrorMessage(err, '기록에 실패했습니다.'));
     } finally {

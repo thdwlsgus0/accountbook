@@ -9,13 +9,16 @@ import PaymentMethodPicker from './PaymentMethodPicker';
 import SmsPasteBox from './SmsPasteBox';
 import { ParsedSms } from '../utils/smsParser';
 import { MemoCategory, suggestCategories } from '../utils/categorySuggest';
+import { useToast } from '../context/ToastContext';
+import { formatCurrency } from '../utils/format';
 import { readLastPaymentMethod, writeLastPaymentMethod } from '../utils/payment';
 import { uploadReceipt } from '../utils/receipt';
 
 interface QuickAddFormProps {
   householdId: number;
   categories: Category[];
-  onAdded: () => void;
+  // 기록이 생기면 그 거래 id를 넘긴다 (대시보드가 방금 기록한 내역을 반짝이게). 되돌리면 id 없이 부른다.
+  onAdded: (newId?: number) => void;
   // "사도 될까?" 요청을 보냈을 때 (대시보드의 요청 카드를 새로 고치게 한다)
   onRequested?: () => void;
 }
@@ -26,6 +29,7 @@ const LARGE_EXPENSE_THRESHOLD = 100000;
 // "빠른 입력"이 핵심 요구사항이므로 필드 수를 최소화하고,
 // 금액 입력창에 자동 포커스를 준다.
 export default function QuickAddForm({ householdId, categories, onAdded, onRequested }: QuickAddFormProps) {
+  const { showToast } = useToast();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -111,6 +115,7 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
         paymentMethod: type === 'expense' ? paymentMethod : null,
       });
       if (type === 'expense') writeLastPaymentMethod(paymentMethod);
+      const recordedLabel = `${memo.trim() ? `${memo.trim()} ` : ''}${formatCurrency(Number(amount))}`;
       setAmount('');
       setMemo('');
       setCategoryTouched(false);
@@ -126,7 +131,21 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
       setSmsKey((k) => k + 1);
       // 방금 기록한 메모·카테고리도 다음 추천에 반영되게 다시 불러온다.
       loadMemoHistory().catch(() => {});
-      onAdded();
+      onAdded(res.data.id);
+      showToast(`${recordedLabel} 기록했어요`, {
+        action: {
+          label: '되돌리기',
+          onClick: async () => {
+            try {
+              await api.delete(`/households/${householdId}/transactions/${res.data.id}`);
+              onAdded();
+              showToast('기록을 되돌렸어요');
+            } catch (err) {
+              showToast(getErrorMessage(err, '되돌리지 못했어요. 전체 내역에서 지워주세요.'), { tone: 'error' });
+            }
+          },
+        },
+      });
     } catch (err) {
       setError(getErrorMessage(err, '기록에 실패했습니다.'));
     } finally {

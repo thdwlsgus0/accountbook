@@ -2464,3 +2464,267 @@ span.memo-tag {
   margin: 0;
   font-size: 0.95rem;
 }
+
+// ───────────────────────── 인터랙션 & 모션 ─────────────────────────
+// 화면 읽기 프로그램에만 읽히는 텍스트 (AnimatedNumber의 최종값 등)
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// 숫자가 굴러가는 동안 자릿수 폭이 흔들리지 않게 고정폭 숫자를 쓴다.
+.summary-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+// 마우스를 올리면 카드가 살짝 떠오른다 (터치 기기에선 hover가 남아 있지 않게 hover 가능한 기기만).
+@media (hover: hover) {
+  .summary-card,
+  .goal-card,
+  .report-entry,
+  .template-chip {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+  }
+
+  .transaction-item:hover {
+    transform: translateX(2px);
+  }
+}
+
+.transaction-item {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+// 달 넘기기: 넘긴 방향에서 요약 카드가 미끄러져 들어온다.
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+.summary-cards {
+  &.slide-left {
+    animation: slide-from-right 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  &.slide-right {
+    animation: slide-from-left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  // 다음 달 숫자를 받아오는 동안은 지금 카드를 살짝 흐리게 해서 바뀌는 중임을 보여준다.
+  &.is-refreshing {
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+  }
+}
+
+.month-title {
+  animation: fade-up 0.3s ease;
+}
+
+.swipe-hint {
+  display: none;
+  margin: -0.3rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .swipe-hint {
+    display: block;
+  }
+}
+
+// 목록이 처음 그려질 때 위에서부터 차례로 떠오른다. --i는 항목 순서.
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.list-enter {
+  animation: fade-up 0.35s ease both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+// 방금 기록한 내역은 잠깐 테두리가 빛난다.
+@keyframes new-item {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 45%, transparent);
+    transform: scale(1.01);
+  }
+}
+
+.transaction-item.is-new {
+  animation: fade-up 0.35s ease both, new-item 1.6s ease;
+}
+
+// 예산·목표·결제수단 막대가 0에서 차오른다. (to를 비워두면 인라인 width 값까지 자란다)
+@keyframes grow-width {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes grow-height {
+  from {
+    height: 0;
+  }
+}
+
+.progress-fill {
+  animation: grow-width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.date-chart-bar,
+.report-bar-fill {
+  animation: grow-height 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.report-share div {
+  animation: grow-width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+// 토스트: 화면 아래 가운데에 잠깐 떴다 사라지는 알림
+.toast-region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: center;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  max-width: 100%;
+  padding: 0.7rem 0.8rem 0.7rem 1.1rem;
+  border-radius: 999px;
+  background: var(--color-text);
+  color: var(--color-card);
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  animation: toast-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  button {
+    flex-shrink: 0;
+    padding: 0.3rem 0.8rem;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.26);
+    }
+  }
+
+  &.error {
+    background: var(--color-expense);
+  }
+}
+
+// 스켈레톤: 불러오는 동안 실제 화면 자리에 은은하게 빛이 지나가는 회색 뼈대
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-accent) 0%,
+    color-mix(in srgb, var(--color-bg-accent) 40%, var(--color-card)) 50%,
+    var(--color-bg-accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 1rem;
+  width: 100%;
+
+  &.short {
+    width: 40%;
+    height: 1.4rem;
+  }
+
+  &.tiny {
+    width: 35%;
+    height: 0.7rem;
+    margin: 0 auto;
+  }
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  &.tall {
+    min-height: 140px;
+  }
+}
+
+// 기기에서 "동작 줄이기"를 켜면 모든 애니메이션·전환을 끈다.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

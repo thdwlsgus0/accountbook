@@ -15,6 +15,7 @@ import { computeBalances, computeTransfers } from '../utils/settlement';
 import SettlementTransfers from '../components/SettlementTransfers';
 import { deleteReceipt, uploadReceipt } from '../utils/receipt';
 import MemoText from '../components/MemoText';
+import { useToast } from '../context/ToastContext';
 import TransactionSearch, {
   EMPTY_FILTERS,
   hasAnyFilter,
@@ -52,6 +53,7 @@ interface EditForm {
 
 export default function TransactionsPage() {
   const { currentId } = useHousehold();
+  const { showToast } = useToast();
   const [month, setMonth] = useState(currentYearMonth());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -192,6 +194,7 @@ export default function TransactionsPage() {
       }
       setEditingId(null);
       refresh();
+      showToast('수정했어요');
     } catch (err) {
       setEditError(getErrorMessage(err, '저장에 실패했습니다.'));
     } finally {
@@ -203,6 +206,7 @@ export default function TransactionsPage() {
     if (!currentId || !confirm('이 내역을 삭제할까요?')) return;
     await api.delete(`/households/${currentId}/transactions/${id}`);
     refresh();
+    showToast('삭제했어요');
   }
 
   // 백업·세금정산용 CSV 내보내기. scope가 'month'면 지금 보고 있는 달만, 'all'이면 전체 내역.

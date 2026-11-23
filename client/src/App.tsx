@@ -2,6 +2,7 @@ import { lazy, ReactNode, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { HouseholdProvider } from './context/HouseholdContext';
+import { ToastProvider } from './context/ToastContext';
 import { RequireAuth, RequireHousehold } from './components/ProtectedRoute';
 import NavBar from './components/NavBar';
 import LoadingScreen from './components/LoadingScreen';
@@ -37,6 +38,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <HouseholdProvider>
+          <ToastProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -121,6 +123,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </ToastProvider>
         </HouseholdProvider>
       </AuthProvider>
     </BrowserRouter>

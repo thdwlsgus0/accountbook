@@ -1,3 +1,4 @@
+import { CSSProperties } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency, splitBadgeLabel } from '../utils/format';
 import ReceiptButton from './ReceiptButton';
@@ -5,7 +6,13 @@ import { useNavigate } from 'react-router-dom';
 import MemoText from './MemoText';
 import { paymentMethodLabel } from '../utils/payment';
 
-export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+interface TransactionListProps {
+  transactions: Transaction[];
+  // 방금 기록한 내역 — 잠깐 반짝이게 강조한다.
+  highlightId?: number | null;
+}
+
+export default function TransactionList({ transactions, highlightId }: TransactionListProps) {
   const navigate = useNavigate();
   if (transactions.length === 0) {
     return <p className="muted">기록된 내역이 없습니다.</p>;
@@ -13,10 +20,14 @@ export default function TransactionList({ transactions }: { transactions: Transa
 
   return (
     <ul className="transaction-list">
-      {transactions.map((t) => {
+      {transactions.map((t, i) => {
         const badge = splitBadgeLabel(t.splitType, t.payerSharePercent);
         return (
-          <li key={t.id} className={`transaction-item ${t.type}`}>
+          <li
+            key={t.id}
+            className={`transaction-item ${t.type} list-enter${t.id === highlightId ? ' is-new' : ''}`}
+            style={{ '--i': i } as CSSProperties}
+          >
             <div className="transaction-main">
               <span
                 className="category-dot"
