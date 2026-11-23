@@ -13,6 +13,7 @@ import { Category, MonthSettlement, MonthSummary, SavingsGoal, Transaction } fro
 import { formatCurrency } from '../utils/format';
 import DashboardSkeleton from '../components/DashboardSkeleton';
 import AnimatedNumber from '../components/AnimatedNumber';
+import { prefetch } from '../utils/prefetch';
 
 function currentYearMonth(): string {
   const d = new Date();
@@ -42,6 +43,12 @@ export default function DashboardPage() {
   // 카테고리와 목표는 달과 상관없어서 가계부가 바뀔 때만 받는다 (달을 넘기거나 지출을 추가할 때 다시 받지 않게).
   useEffect(() => {
     if (!currentId) return;
+    // 아래 카드들(빠른 입력, 템플릿, 사도 될까?, 고정비 알림)이 쓸 데이터도 지금 같이 요청해 둔다.
+    // 안 그러면 대시보드 숫자가 다 뜬 뒤에야 두 번째 요청이 나가서 그만큼 늦게 채워진다.
+    prefetch(`/households/${currentId}/templates`);
+    prefetch(`/households/${currentId}/transactions/memo-categories`);
+    prefetch(`/households/${currentId}/purchase-requests`);
+    prefetch(`/households/${currentId}/recurring`);
     Promise.all([
       api.get<{ categories: Category[] }>(`/households/${currentId}/categories`),
       api.get<{ goals: SavingsGoal[] }>(`/households/${currentId}/goals`),

@@ -8,9 +8,10 @@ interface AnimatedNumberProps {
 }
 
 // 값이 바뀌면 이전 값에서 새 값까지 숫자가 굴러가듯 바뀐다 (지출을 추가하면 "지출" 카드가 올라가는 게 보이게).
-// 처음 그릴 때는 0부터 올라가고, 동작 줄이기를 켠 사용자에게는 바로 최종값을 보여준다.
-export default function AnimatedNumber({ value, format, durationMs = 650 }: AnimatedNumberProps) {
-  const [shown, setShown] = useState(() => (prefersReducedMotion() ? value : 0));
+// 처음 그릴 때는 바로 최종값을 보여준다 (0부터 올라가면 화면을 열 때마다 숫자를 읽기까지 기다려야 해서
+// 느리게 느껴졌다). 동작 줄이기를 켠 사용자에게는 바뀔 때도 바로 최종값을 보여준다.
+export default function AnimatedNumber({ value, format, durationMs = 400 }: AnimatedNumberProps) {
+  const [shown, setShown] = useState(value);
   const fromRef = useRef(shown);
 
   useEffect(() => {

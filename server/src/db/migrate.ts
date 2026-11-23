@@ -135,7 +135,10 @@ async function runMigrations(): Promise<void> {
     schema = await loadSchema();
   }
   // 어느 DB에 붙었고 무엇을 새로 적용했는지 남겨서, 콘솔과 앱이 다른 DB를 보는 문제를 바로 알아챌 수 있게 한다.
-  console.log(`[migrate] db=${who.db} user=${who.user} applied=${applied.length ? applied.join(', ') : 'none'}`);
+  // DB 호스트 이름(비밀번호 아님)과 서버 실행 지역도 남겨서, 둘이 멀리 떨어져 있는지 확인할 수 있게 한다.
+  console.log(
+    `[migrate] db=${who.db} user=${who.user} host=${process.env.DB_HOST} region=${process.env.VERCEL_REGION ?? 'local'} applied=${applied.length ? applied.join(', ') : 'none'}`
+  );
 }
 
 // 서버 인스턴스마다 한 번만 실행한다. 동시에 들어온 요청들은 같은 Promise를 기다린다.

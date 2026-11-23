@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
+import { getOnce } from '../utils/prefetch';
 import { RecurringRule } from '../types';
 import { formatCurrency, localDateString } from '../utils/format';
 import { readDismissed, writeDismissed } from '../utils/storage';
@@ -17,9 +17,8 @@ export default function UpcomingRecurringBanner({ householdId }: { householdId: 
   const [dismissed, setDismissed] = useState(() => readDismissed(storageKey) === tomorrowKey);
 
   useEffect(() => {
-    api
-      .get<{ recurring: RecurringRule[] }>(`/households/${householdId}/recurring`)
-      .then((res) => setRules(res.data.recurring))
+    getOnce<{ recurring: RecurringRule[] }>(`/households/${householdId}/recurring`)
+      .then((data) => setRules(data.recurring))
       .catch(() => setRules([]));
   }, [householdId]);
 

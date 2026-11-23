@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
+import { getOnce } from '../utils/prefetch';
 import { useAuth } from '../context/AuthContext';
 import { PurchaseRequest, PurchaseRequestStatus } from '../types';
 import { formatCurrency, localDateString, splitBadgeLabel } from '../utils/format';
@@ -30,8 +31,8 @@ export default function PurchaseRequestsCard({ householdId, refreshKey, onPurcha
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const res = await api.get<{ requests: PurchaseRequest[] }>(`/households/${householdId}/purchase-requests`);
-    setRequests(res.data.requests);
+    const data = await getOnce<{ requests: PurchaseRequest[] }>(`/households/${householdId}/purchase-requests`);
+    setRequests(data.requests);
   }, [householdId]);
 
   useEffect(() => {

@@ -29,6 +29,21 @@ app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json());
 app.use(cookieParser());
 
+// 요청마다 걸린 시간을 Server-Timing 헤더로 내려주고(브라우저 개발자도구 Network 탭에서 보임),
+// 오래 걸린 요청은 로그로 남긴다. 느려졌을 때 어디가 느린지 추측하지 않고 바로 확인하려는 용도.
+const SLOW_REQUEST_MS = 800;
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = process.hrtime.bigint();
+  const writeHead = res.writeHead;
+  res.writeHead = function (this: Response, ...args: Parameters<Response['writeHead']>) {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    if (!res.headersSent) res.setHeader('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    if (ms > SLOW_REQUEST_MS) console.log(`[slow] ${req.method} ${req.originalUrl.split('?')[0]} ${Math.round(ms)}ms`);
+    return writeHead.apply(this, args);
+  } as Response['writeHead'];
+  next();
+});
+
 // 라우트가 DB를 쓰기 전에, 필요한 테이블/컬럼이 앱의 DB에 있는지 확인하고 없으면 추가한다 (인스턴스당 1회).
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   await ensureSchema();
@@ -37,8 +52,11 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
+    // DB까지 한 번 왕복하는 데 걸린 시간. 서버(Vercel 함수)와 DB가 멀리 떨어져 있으면 여기서 바로 드러난다.
+    const start = process.hrtime.bigint();
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected' });
+    const dbMs = Number(process.hrtime.bigint() - start) / 1e6;
+    res.json({ status: 'ok', db: 'connected', dbRoundTripMs: Math.round(dbMs), region: process.env.VERCEL_REGION ?? null });
   } catch (err) {
     res.status(500).json({ status: 'error', message: (err as Error).message });
   }

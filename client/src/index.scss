@@ -2524,11 +2524,11 @@ span.memo-tag {
 
 .summary-cards {
   &.slide-left {
-    animation: slide-from-right 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: slide-from-right 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   &.slide-right {
-    animation: slide-from-left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: slide-from-left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   // 다음 달 숫자를 받아오는 동안은 지금 카드를 살짝 흐리게 해서 바뀌는 중임을 보여준다.
@@ -2539,7 +2539,7 @@ span.memo-tag {
 }
 
 .month-title {
-  animation: fade-up 0.3s ease;
+  animation: fade-up 0.2s ease;
 }
 
 .swipe-hint {
@@ -2564,8 +2564,8 @@ span.memo-tag {
 }
 
 .list-enter {
-  animation: fade-up 0.35s ease both;
-  animation-delay: calc(var(--i, 0) * 35ms);
+  animation: fade-up 0.25s ease both;
+  animation-delay: calc(var(--i, 0) * 18ms);
 }
 
 // 방금 기록한 내역은 잠깐 테두리가 빛난다.
@@ -2578,7 +2578,7 @@ span.memo-tag {
 }
 
 .transaction-item.is-new {
-  animation: fade-up 0.35s ease both, new-item 1.6s ease;
+  animation: fade-up 0.25s ease both, new-item 1.4s ease;
 }
 
 // 예산·목표·결제수단 막대가 0에서 차오른다. (to를 비워두면 인라인 width 값까지 자란다)
@@ -2595,16 +2595,16 @@ span.memo-tag {
 }
 
 .progress-fill {
-  animation: grow-width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: grow-width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .date-chart-bar,
 .report-bar-fill {
-  animation: grow-height 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: grow-height 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .report-share div {
-  animation: grow-width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: grow-width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 // 토스트: 화면 아래 가운데에 잠깐 떴다 사라지는 알림

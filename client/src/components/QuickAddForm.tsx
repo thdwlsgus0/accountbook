@@ -10,6 +10,7 @@ import SmsPasteBox from './SmsPasteBox';
 import { ParsedSms } from '../utils/smsParser';
 import { MemoCategory, suggestCategories } from '../utils/categorySuggest';
 import { useToast } from '../context/ToastContext';
+import { getOnce } from '../utils/prefetch';
 import { formatCurrency } from '../utils/format';
 import { readLastPaymentMethod, writeLastPaymentMethod } from '../utils/payment';
 import { uploadReceipt } from '../utils/receipt';
@@ -52,8 +53,8 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
   const [smsKey, setSmsKey] = useState(0);
 
   const loadTemplates = useCallback(async () => {
-    const res = await api.get<{ templates: ExpenseTemplate[] }>(`/households/${householdId}/templates`);
-    setTemplates(res.data.templates);
+    const data = await getOnce<{ templates: ExpenseTemplate[] }>(`/households/${householdId}/templates`);
+    setTemplates(data.templates);
   }, [householdId]);
 
   useEffect(() => {
@@ -61,10 +62,10 @@ export default function QuickAddForm({ householdId, categories, onAdded, onReque
   }, [loadTemplates]);
 
   const loadMemoHistory = useCallback(async () => {
-    const res = await api.get<{ memoCategories: MemoCategory[] }>(
+    const data = await getOnce<{ memoCategories: MemoCategory[] }>(
       `/households/${householdId}/transactions/memo-categories`
     );
-    setMemoHistory(res.data.memoCategories);
+    setMemoHistory(data.memoCategories);
   }, [householdId]);
 
   useEffect(() => {
