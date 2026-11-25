@@ -1,0 +1,9 @@
+{
+  // 테스트 코드 타입 검사용. 빌드(tsconfig.json, rootDir: src)에는 테스트가 들어가지 않게 따로 둔다.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

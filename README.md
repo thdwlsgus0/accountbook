@@ -137,15 +137,17 @@ npm run dev
 
 안내된 주소(기본 `http://localhost:5173`)로 접속해서 네이버로 로그인 → 가계부 생성(또는 초대 코드로 참여) 순서로 시작하면 됩니다.
 
-### 5. 프론트엔드 테스트
+### 5. 테스트
 
 ```bash
-cd client
-npm test            # 한 번 실행
-npm run test:watch  # 파일을 고칠 때마다 다시 실행
+cd client && npm test   # 프론트엔드
+cd server && npm test   # 백엔드
+# 둘 다 npm run test:watch 로 파일을 고칠 때마다 다시 실행할 수 있다
 ```
 
-Vitest + Testing Library(jsdom)로 돌아갑니다. 정산 계산, 카드 문자 해석, 카테고리 추천, 태그, 날짜·금액 표시 같은 로직과 검색·문자 붙여넣기·토스트 같은 컴포넌트 동작을 확인합니다. 테스트 파일은 대상 파일 옆(`*.test.ts`)이나 `__tests__/` 폴더에 둡니다.
+- **프론트엔드** (Vitest + Testing Library, jsdom): 정산 계산, 카드 문자 해석, 카테고리 추천, 태그, 날짜·금액 표시 같은 로직과 검색·문자 붙여넣기·토스트 같은 컴포넌트 동작. 테스트 파일은 대상 파일 옆(`*.test.ts`)이나 `__tests__/` 폴더에 둡니다.
+- **백엔드** (Vitest + supertest, `server/test/`): 실제 MySQL 없이 가짜 DB(`test/helpers/fakeDb.ts`)로 돌아갑니다. API 입력 검증, 권한 규칙("사도 될까?" 본인 승인 금지 등), 검색 조건 조립, 정산 응답, 구성원 확인 캐시, 고정비 자동 기록 중복 방지를 확인합니다. 가짜 DB는 등록되지 않은 SQL이 오면 실패하므로 예상 못 한 쿼리도 잡습니다. 테스트 코드 타입 검사는 `npm run typecheck:test`입니다.
+- 서버와 클라이언트에 복사돼 있는 정산 코드가 서로 같은지도 백엔드 테스트가 확인합니다.
 
 ## 알아두면 좋은 설계 결정
 
